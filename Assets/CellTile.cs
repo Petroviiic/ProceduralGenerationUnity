@@ -9,8 +9,6 @@ public class CellTile
     private SpriteRenderer spriteRenderer;
 
     public bool isPlaced = false;
-
-    private List<SIDES> availableSides = new List<SIDES>();
     public CellTile(GameObject cell)
     {
         selfObject = cell;
