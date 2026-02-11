@@ -13,6 +13,7 @@ public class ProceduralGenerationManager : MonoBehaviour
     [SerializeField] private Vector2 cellSize = new Vector2(1, 1);
 
     private List<CellTile> cellPool = new List<CellTile>();
+    private List<CellTile> activeCells = new List<CellTile>();
 
     private List<Sprite> sprites = new List<Sprite>();
 
@@ -25,6 +26,19 @@ public class ProceduralGenerationManager : MonoBehaviour
     }
     public void Setup()
     {
+        Vector3 gridPosition = Camera.main.ScreenToWorldPoint(new Vector3(Screen.width / 2, Screen.height / 2, 10));
+        gridPosition += new Vector3(-cellSize.x * (columns - 1) / 2, cellSize.y * (rows - 1) / 2);
+        gridParent.localPosition = gridPosition;
+
+        float aspectRatio = (float)Screen.width / (float)Screen.height;
+
+        float sizeByHeight = rows * cellSize.y / 2f;
+        float sizeByWidth = (columns * cellSize.x / 2f) / aspectRatio;
+        float padding = 1.1f;
+        float finalSize = Mathf.Max(sizeByHeight, sizeByWidth) * padding;
+        Camera.main.orthographicSize = Mathf.Max(5f, finalSize);
+
+
         sprites.Clear();
         foreach (Sprite item in Resources.LoadAll<Sprite>("Tiles"))
         {
@@ -32,16 +46,18 @@ public class ProceduralGenerationManager : MonoBehaviour
         }
         LoadSprites(colorDiversity, sprites[0].rect.size);
 
-        foreach(CellTile tile in cellPool)
+
+        foreach (CellTile tile in activeCells)
         {
             tile.isPlaced = false;
             tile.selfObject.SetActive(false);
         }
+        activeCells.Clear();
 
         int k = 0;
-        for (int i = 0; i < columns; i++)
+        for (int j = 0; j < rows; j++)
         {
-            for (int j = 0; j < rows; j++)
+            for (int i = 0; i < columns; i++)
             {
                 CellTile cellTile = null;
                 if (k >= cellPool.Count)
@@ -49,15 +65,16 @@ public class ProceduralGenerationManager : MonoBehaviour
                     GameObject cell = Instantiate(cellPrefab);
                     cell.transform.parent = gridParent;
                                         
-                    cellTile = new CellTile(cell);
+                    cellTile = new CellTile(cell, sprites.GetRange(1, sprites.Count-1));
                     cellTile.UpdateSprite(sprites[0]);
                     cellPool.Add(cellTile);
                 }
 
                 cellTile = cellPool[k];
                 cellTile.selfObject.SetActive(true);
-                cellTile.selfObject.transform.localPosition = gridOffset + new Vector2(i * cellSize.x, j * cellSize.y);
+                cellTile.selfObject.transform.localPosition = gridOffset + new Vector2(i * cellSize.x, -j * cellSize.y);
 
+                activeCells.Add(cellTile);
                 k++;
             }
         }
@@ -107,6 +124,7 @@ public class ProceduralGenerationManager : MonoBehaviour
                     
                 }
             }
+            TileData.instance.UpdateData(sprite, marks);
             print((marks[0] + " " + marks[1] + " " + marks[2] + " " + marks[3]));
         }
     }
@@ -154,27 +172,83 @@ public class ProceduralGenerationManager : MonoBehaviour
         {
             Setup();
         }
+        if (Input.GetKeyDown(KeyCode.G))
+        {
+            StartCoroutine(GenerateMap());
+        }
     }
-    private void GenerateMap()
+
+    //TODO ovdje dodaj svaki put da se refreshuje lista opcija za svaki cell
+    private IEnumerator GenerateMap()
     {
         int placed = 0;
+        //Vector2Int coords = new Vector2Int(0, columns - 1);
+        Vector2Int coords = new Vector2Int(Random.Range(0, rows), Random.Range(0, columns));
+
         for (placed = 0; placed < columns * rows; placed++)
         {
-            int leastEntrophy = int.MaxValue;
-            Vector2Int pos = new Vector2Int(0, columns - 1);
-            PlaceTile(pos);
-
-            for (int i = 0; i < columns; i++)
+            yield return new WaitForSeconds(0.01f);
+            if (!PlaceTile(coords))
             {
-                for (int j = 0; j < rows; j++)
+                Debug.Log("Error placing a tile");
+                break;
+            }
+            coords = FindNext();
+            if (coords.x < 0 || coords.y < 0)
+            {
+                Debug.LogError("Greska, koordinate ne mogu biti negativne");
+                break;
+            }
+        }
+        print("DONE!");
+    }
+    private Vector2Int FindNext()
+    {
+        int leastEntrophy = int.MaxValue;
+        Vector2Int coordinates = new Vector2Int(-1, -1);
+        for (int i = 0; i < rows; i++)
+        {
+            for (int j = 0; j < columns; j++)
+            {
+                CellTile tile = activeCells[j + i * columns];
+                if (!tile.isPlaced && tile.GetOptionsCount() < leastEntrophy)
                 {
-                
+                    leastEntrophy = tile.GetOptionsCount();
+                    coordinates.y = j;
+                    coordinates.x = i;
                 }
             }
         }
+        return coordinates;
+
     }
-    private void PlaceTile(Vector2Int pos)
+    private bool PlaceTile(Vector2Int pos)
     {
-        
+        string[] tileMarks = activeCells[pos.y + pos.x * columns].Place();
+        if (tileMarks == null)
+        {
+            return false;
+        }
+        print(("postavio na : ", pos, " tj indeks: ", pos.y + pos.x * columns));
+        print((tileMarks[0] + " " + tileMarks[1] + " " + tileMarks[2] + " " + tileMarks[3]));
+        Vector2Int[] directions = new Vector2Int[]
+        {
+            new Vector2Int(0, -1),
+            new Vector2Int(-1, 0),
+            new Vector2Int(0, 1),
+            new Vector2Int(1, 0),
+        };
+        for (int i = 0; i < directions.Length; i++)     //check left, up, right, down, as sorted in tileMarks
+        {
+            Vector2Int dir = directions[i];
+            int y = pos.y + dir.y;
+            int x = pos.x + dir.x;
+            if (x < 0 || y < 0 || x >= rows || y >= columns)
+                continue;
+            print(("Cekiram neighbors na koordinatama: ", y + x * columns, tileMarks[i]));
+            activeCells[y + x * columns].CheckCompatibility(tileMarks[i], i); //ovdje ce biti greska sa indeksom
+        }
+
+        return true;
     }
 }
