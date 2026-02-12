@@ -286,7 +286,7 @@ public class ProceduralGenerationManager : MonoBehaviour
             return false;
         }
 
-        print(("postavio na : ", pos, " tj indeks: ", pos.y + pos.x * columns));
+        print(("Postavio na : ", pos, " tj indeks: ", pos.y + pos.x * columns));
 
         for (int i = 0; i < directions.Length; i++)     //check left, up, right, down, as sorted in tileMarks
         {
