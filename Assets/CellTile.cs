@@ -6,22 +6,20 @@ using UnityEngine;
 public class CellTile
 {
     public GameObject selfObject { get; private set; }
-
     private SpriteRenderer spriteRenderer;
 
+    private List<Sprite> options = new List<Sprite>();
+    private Vector2Int coordinates = new Vector2Int(-1, -1);
     public bool isPlaced = false;
 
-    private List<Sprite> options = new List<Sprite>();
-
-    private Vector2Int coordinates = new Vector2Int(-1, -1);
     public CellTile(GameObject cell, List<Sprite> options)
     {
         selfObject = cell;
-
-        coordinates = new Vector2Int(-1, -1);
-        spriteRenderer = selfObject.GetComponent<SpriteRenderer>();
         selfObject.SetActive(false);
+        spriteRenderer = selfObject.GetComponent<SpriteRenderer>();
+
         this.options = options;
+        coordinates = new Vector2Int(-1, -1);
         isPlaced = false;
     }
     public void SetOptions(List<Sprite> options)
@@ -41,6 +39,12 @@ public class CellTile
         }
         coordinates = coords;
         isPlaced = true;
+
+        if (GetOptionsCount() <= 0)
+        {
+            return null;
+        }
+
         int rand = UnityEngine.Random.Range(0, GetOptionsCount());
         UpdateSprite(options[rand]);
 

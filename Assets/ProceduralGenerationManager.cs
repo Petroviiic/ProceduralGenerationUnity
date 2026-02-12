@@ -19,13 +19,22 @@ public class ProceduralGenerationManager : MonoBehaviour
 
     private List<Sprite> sprites = new List<Sprite>();
 
-    private int colorDiversity = 3;
+    [SerializeField] private int colorDiversity = 3;
     private Dictionary<Color, char> colorMapping = new Dictionary<Color, char>();
     private char colorMappingIndex = 'A';
-    private void Start()
+
+
+    private Vector2Int[] directions = new Vector2Int[]
     {
-       // Setup();
-    }
+        new Vector2Int(0, -1),
+        new Vector2Int(-1, 0),
+        new Vector2Int(0, 1),
+        new Vector2Int(1, 0),
+    };
+    private bool goNext = false;        //used for stepbystep iteration
+    private bool isRunning = false;     //is generation currently in progress
+    private bool isReset = false;     
+
     public void Setup(bool isReset)
     {
         AdjustFOV();
@@ -136,59 +145,23 @@ public class ProceduralGenerationManager : MonoBehaviour
     }
 
 
-
-    //void VisualizePixelsChecked(int colorDiversity, Vector2 spriteSize)
-    //{
-    //    Sprite toCopy = sprites[4];
-    //    Sprite dummy = Sprite.Create(new Texture2D(100, 100, toCopy.texture.format, toCopy.texture.mipmapCount, true), new Rect(0, 0, 100, 100), new Vector2(50, 50));
-    //    Graphics.CopyTexture(toCopy.texture, dummy.texture);
-    //    dummy.texture.Apply();
-
-    //    int x, y;
-    //    Vector2 offset = spriteSize / (colorDiversity * 2);
-    //    for (int i = 0; i < colorDiversity; i++)
-    //    {
-    //        for (int j = 0; j < colorDiversity; j++)
-    //        {
-    //            x = (int)(offset.x + j * spriteSize.x / colorDiversity);
-    //            y = (int)(offset.y + i * spriteSize.y / colorDiversity);
-
-    //            Color color = dummy.texture.GetPixel(x, y);
-    //            if (!colorMapping.ContainsKey(color))
-    //            {
-    //                colorMapping[color] = colorMappingIndex++;
-    //            }
-    //            // print(colorMapping[color]);
-
-    //            for (int k = 0; k < 3; k++)
-    //            {
-    //                dummy.texture.SetPixel(x - k, y - k, Color.red);
-    //                dummy.texture.SetPixel(x - k, y + k, Color.red);
-    //                dummy.texture.SetPixel(x + k, y - k, Color.red);
-    //                dummy.texture.SetPixel(x + k, y + k, Color.red);
-    //                dummy.texture.Apply();
-    //            }
-    //            sprites[0] = dummy;
-    //        }
-    //    }
-    //}
-    bool goNext = false;
-    bool isStarted = false;
     private void Update()
     {
-        if (Input.GetKeyDown(KeyCode.Space))
+        if (Input.GetKeyDown(KeyCode.Space))        //inits grid only
         {
-            Setup(isStarted);     
+            Setup(isReset);     
         }
-        if (Input.GetKeyDown(KeyCode.G))
+
+        if (Input.GetKeyDown(KeyCode.G))            //starts single generation process
         {
             StartCoroutine(GenerateMap());
         }
-        if (Input.GetKeyDown(KeyCode.T))
+
+        if (Input.GetKeyDown(KeyCode.T))            //starts N generation processes for testing purposes
         {
             StartCoroutine(TestGeneration(20));
         }
-        if (Input.GetKeyDown(KeyCode.F))
+        if (Input.GetKeyDown(KeyCode.F))            //used for step by step generation
         {
             foreach (CellTile item in placedCells)
             {
@@ -199,15 +172,14 @@ public class ProceduralGenerationManager : MonoBehaviour
             {
                 item.selfObject.GetComponent<SpriteRenderer>().color = Color.blue;
             }
-
         }
-        if (Input.GetKeyDown(KeyCode.R))
+
+        if (Input.GetKeyDown(KeyCode.R))           //safety check, resets the scene
         {
             SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
         }
     }
 
-    bool isRunning = false;
     private IEnumerator TestGeneration(int num)
     {
         for (int i = 0; i < num; i++)
@@ -251,18 +223,10 @@ public class ProceduralGenerationManager : MonoBehaviour
                 break;
             }
         }
-        print("DONE!");
         isRunning = false;
     }
     private Vector2Int FindNext()
-    {
-        Vector2Int[] directions = new Vector2Int[]
-        {
-            new Vector2Int(0, -1),
-            new Vector2Int(-1, 0),
-            new Vector2Int(0, 1),
-            new Vector2Int(1, 0),     
-        };
+    {   
         int leastEntrophy = int.MaxValue;
         Vector2Int coordinates = new Vector2Int(-1, -1);
 
@@ -270,32 +234,34 @@ public class ProceduralGenerationManager : MonoBehaviour
         {
             CellTile placed = placedCells[i];
             Vector2Int coords = placed.GetCoordinates();
+
             if (coords.x < 0 || coords.y < 0)
             {
-                Debug.Log("Error! Tile present in placedCells, but its coordinates are negative");
+                Debug.Log("Error! Tile is present in placedCells, but its coordinates are negative");
                 break;
             }
+
             int neigborsCount = 0;
             int placedNeighborsCount = 0;
             foreach (Vector2Int direction in directions)
             {
                 Vector2Int coordsToCheck = coords + direction;
-                int posToCheck = coordsToCheck.y + coordsToCheck.x * columns;
+                int posToCheck = coordsToCheck.y + coordsToCheck.x * columns;   //coords to list index
                 if (coordsToCheck.y < 0 || coordsToCheck.x < 0 || coordsToCheck.y >= columns || coordsToCheck.x >= rows)
                     continue;
                 neigborsCount++;
-                CellTile tile = activeCells[posToCheck];
+                CellTile neighbor = activeCells[posToCheck];
 
-                int options = tile.GetOptionsCount();
-                if (tile.isPlaced)
+                int optionsCount = neighbor.GetOptionsCount();
+                if (neighbor.isPlaced)
                 {
                     placedNeighborsCount++;
                     continue;
                 }
 
-                if (options < leastEntrophy)
+                if (optionsCount < leastEntrophy)
                 {
-                    leastEntrophy = tile.GetOptionsCount();
+                    leastEntrophy = optionsCount;
                     coordinates.y = coordsToCheck.y;
                     coordinates.x = coordsToCheck.x;
                 }
@@ -313,19 +279,15 @@ public class ProceduralGenerationManager : MonoBehaviour
     private bool PlaceTile(Vector2Int pos)
     {
         CellTile toPlace = activeCells[pos.y + pos.x * columns];
+
         string[] tileMarks = toPlace.Place(new Vector2Int(pos.x, pos.y));
         if (tileMarks == null)
         {
             return false;
         }
+
         print(("postavio na : ", pos, " tj indeks: ", pos.y + pos.x * columns));
-        Vector2Int[] directions = new Vector2Int[]
-        {
-            new Vector2Int(0, -1),
-            new Vector2Int(-1, 0),
-            new Vector2Int(0, 1),
-            new Vector2Int(1, 0),
-        };
+
         for (int i = 0; i < directions.Length; i++)     //check left, up, right, down, as sorted in tileMarks
         {
             Vector2Int dir = directions[i];
@@ -333,9 +295,60 @@ public class ProceduralGenerationManager : MonoBehaviour
             int x = pos.x + dir.x;
             if (x < 0 || y < 0 || x >= rows || y >= columns)
                 continue;
+
             activeCells[y + x * columns].CheckCompatibility(tileMarks[i], i); //ovdje ce biti greska sa indeksom
         }
         placedCells.Add(toPlace);
         return true;
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//void VisualizePixelsChecked(int colorDiversity, Vector2 spriteSize)
+//{
+//    Sprite toCopy = sprites[4];
+//    Sprite dummy = Sprite.Create(new Texture2D(100, 100, toCopy.texture.format, toCopy.texture.mipmapCount, true), new Rect(0, 0, 100, 100), new Vector2(50, 50));
+//    Graphics.CopyTexture(toCopy.texture, dummy.texture);
+//    dummy.texture.Apply();
+
+//    int x, y;
+//    Vector2 offset = spriteSize / (colorDiversity * 2);
+//    for (int i = 0; i < colorDiversity; i++)
+//    {
+//        for (int j = 0; j < colorDiversity; j++)
+//        {
+//            x = (int)(offset.x + j * spriteSize.x / colorDiversity);
+//            y = (int)(offset.y + i * spriteSize.y / colorDiversity);
+
+//            Color color = dummy.texture.GetPixel(x, y);
+//            if (!colorMapping.ContainsKey(color))
+//            {
+//                colorMapping[color] = colorMappingIndex++;
+//            }
+//            // print(colorMapping[color]);
+
+//            for (int k = 0; k < 3; k++)
+//            {
+//                dummy.texture.SetPixel(x - k, y - k, Color.red);
+//                dummy.texture.SetPixel(x - k, y + k, Color.red);
+//                dummy.texture.SetPixel(x + k, y - k, Color.red);
+//                dummy.texture.SetPixel(x + k, y + k, Color.red);
+//                dummy.texture.Apply();
+//            }
+//            sprites[0] = dummy;
+//        }
+//    }
+//}
