@@ -1,6 +1,8 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -142,12 +144,60 @@ public class ProceduralGenerationManager : MonoBehaviour
                     
                 }
             }
-            
             TileData.instance.UpdateData(sprite, marks);
             print((marks[0] + " " + marks[1] + " " + marks[2] + " " + marks[3]));
-        }
-    }
 
+            if (sprite == sprites[0])
+                continue;
+
+            Color32[] original = sprite.texture.GetPixels32();
+            int size = sprite.texture.width;
+            for (int n = 0; n < 3; n++)
+            {
+                Color32[] rotated = RotateTexture(original, size);
+                
+                Texture2D texture = new Texture2D(size, size);
+                texture.SetPixels32(rotated);
+                texture.Apply();
+                Sprite rotation = Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f));
+                
+                rotatedSprites.Add(rotation);
+
+                int splitIndex = 4 - n - 1; 
+                string[] firstPart = new string[splitIndex];
+                string[] secondPart = new string[marks.Length - splitIndex];
+                Array.Copy(marks, 0, firstPart, 0, splitIndex);
+                Array.Copy(marks, splitIndex, secondPart, 0, secondPart.Length);
+                string[] rotatedMarks = secondPart.Concat(firstPart).ToArray();
+
+                original = rotated;
+
+                //GameObject test = new GameObject();
+                //test.AddComponent<SpriteRenderer>();
+                //test.GetComponent<SpriteRenderer>().sprite = rotation;
+                //test.transform.position = new Vector3(n*1.1f, 3, 1);
+                //print(("rotacija "+ n +" "+ rotatedMarks[0] + " " + rotatedMarks[1] + " " + rotatedMarks[2] + " " + rotatedMarks[3]));
+                TileData.instance.UpdateData(rotation, rotatedMarks);  
+            }
+
+        }
+        sprites.AddRange(rotatedSprites);
+    }
+    private Color32[] RotateTexture(Color32[] original, int size)
+    {
+        //rotates clockwise
+        Color32[] ret = new Color32[size * size];
+
+        for (int j = 0; j < size; j++)
+        {
+            for (int i = 0; i < size; i++)
+            {
+                ret[(i + 1) * size - j - 1] = original[original.Length - 1 - (j * size + i)];
+            }
+        }
+
+        return ret;
+    }
 
     private void Update()
     {
