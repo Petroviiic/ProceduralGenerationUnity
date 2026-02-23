@@ -5,6 +5,7 @@ using System.Linq;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using static UnityEditor.PlayerSettings;
 
 public class ProceduralGenerationManager : MonoBehaviour
 {
@@ -45,6 +46,7 @@ public class ProceduralGenerationManager : MonoBehaviour
 
         if (!isReset)
             LoadSprites(colorDiversity);
+        VisualizePixelsChecked(colorDiversity, new Vector2Int(sprites[0].texture.width, sprites[0].texture.height));
 
         foreach (CellTile tile in activeCells)
         {
@@ -96,7 +98,8 @@ public class ProceduralGenerationManager : MonoBehaviour
     private void LoadSprites(int colorDiversity)
     {
         sprites.Clear();
-        foreach (Sprite item in Resources.LoadAll<Sprite>("Tiles/Tiles1"))
+        //foreach (Sprite item in Resources.LoadAll<Sprite>("Tiles/MyTiles"))
+        foreach (Sprite item in Resources.LoadAll<Sprite>("Images/circuit"))
         {
             sprites.Add(item);
         }
@@ -147,7 +150,7 @@ public class ProceduralGenerationManager : MonoBehaviour
             TileData.instance.UpdateData(sprite, marks);
             print((marks[0] + " " + marks[1] + " " + marks[2] + " " + marks[3]));
 
-            if (sprite == sprites[0])
+            if (marks[0] == marks[1] && marks[1] == marks[2] && marks[2] == marks[3])
                 continue;
 
             Color32[] original = sprite.texture.GetPixels32();
@@ -156,7 +159,8 @@ public class ProceduralGenerationManager : MonoBehaviour
             {
                 Color32[] rotated = RotateTexture(original, size);
                 
-                Texture2D texture = new Texture2D(size, size);
+                Texture2D texture = new Texture2D(size, size, sprite.texture.format, false);
+                texture.filterMode = FilterMode.Point;
                 texture.SetPixels32(rotated);
                 texture.Apply();
                 Sprite rotation = Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f));
@@ -291,9 +295,10 @@ public class ProceduralGenerationManager : MonoBehaviour
                 {
                     history.Push(new MapState
                     {
+                        currentSpriteIndex = activeCells[coords.y + coords.x * columns].spriteSelection,
                         optionsSnapshot = options,
                         currentTilePos = coords,
-                        placedTilesSnapshot = new List<CellTile>(placedCells)
+                        placedTilesSnapshot = new List<CellTile>(placedCells.GetRange(0, placedCells.Count - 1))
                     });
                     placed++;
                 }
@@ -341,7 +346,7 @@ public class ProceduralGenerationManager : MonoBehaviour
             activeCells[index].RestoreOptions(state.optionsSnapshot[index]);
         }
         int currentCell = state.currentTilePos.y + state.currentTilePos.x * columns;
-        activeCells[currentCell].ResetCell(sprites[0]);
+        activeCells[currentCell].ResetCell(sprites[0], state.currentSpriteIndex + 1);
 
         placedCells = new List<CellTile>(state.placedTilesSnapshot);
     }
@@ -488,54 +493,55 @@ public class ProceduralGenerationManager : MonoBehaviour
         placedCells.Add(toPlace);
         return optionsSnapshot;
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    void VisualizePixelsChecked(int colorDiversity, Vector2Int spriteSize)
+    {
+        Sprite toCopy = sprites[4];
+        Sprite dummy = Sprite.Create(new Texture2D(spriteSize.x, spriteSize.y, toCopy.texture.format, toCopy.texture.mipmapCount, true), new Rect(0, 0, spriteSize.x, spriteSize.y), new Vector2(0.5f, 0.5f));
+        Graphics.CopyTexture(toCopy.texture, dummy.texture);
+        dummy.texture.Apply();
+
+        int x, y;
+        Vector2 offset = spriteSize / (colorDiversity * 2);
+        for (int i = 0; i < colorDiversity; i++)
+        {
+            for (int j = 0; j < colorDiversity; j++)
+            {
+                x = (int)(offset.x + j * spriteSize.x / colorDiversity);
+                y = (int)(offset.y + i * spriteSize.y / colorDiversity);
+
+                Color color = dummy.texture.GetPixel(x, y);
+                //if (!colorMapping.ContainsKey(color))
+                //{
+                //    colorMapping[color] = colorMappingIndex++;
+                //}
+                // print(colorMapping[color]);
+
+                    dummy.texture.SetPixel(x, y, Color.red);
+                for (int k = 0; k < 3; k++)
+                {
+                    //dummy.texture.SetPixel(x - k, y - k, Color.red);
+                    //dummy.texture.SetPixel(x - k, y + k, Color.red);
+                    //dummy.texture.SetPixel(x + k, y - k, Color.red);
+                    //dummy.texture.SetPixel(x + k, y + k, Color.red);
+                }
+            }
+        }
+        dummy.texture.Apply();
+        sprites[0] = dummy;
+    }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//void VisualizePixelsChecked(int colorDiversity, Vector2 spriteSize)
-//{
-//    Sprite toCopy = sprites[4];
-//    Sprite dummy = Sprite.Create(new Texture2D(100, 100, toCopy.texture.format, toCopy.texture.mipmapCount, true), new Rect(0, 0, 100, 100), new Vector2(50, 50));
-//    Graphics.CopyTexture(toCopy.texture, dummy.texture);
-//    dummy.texture.Apply();
-
-//    int x, y;
-//    Vector2 offset = spriteSize / (colorDiversity * 2);
-//    for (int i = 0; i < colorDiversity; i++)
-//    {
-//        for (int j = 0; j < colorDiversity; j++)
-//        {
-//            x = (int)(offset.x + j * spriteSize.x / colorDiversity);
-//            y = (int)(offset.y + i * spriteSize.y / colorDiversity);
-
-//            Color color = dummy.texture.GetPixel(x, y);
-//            if (!colorMapping.ContainsKey(color))
-//            {
-//                colorMapping[color] = colorMappingIndex++;
-//            }
-//            // print(colorMapping[color]);
-
-//            for (int k = 0; k < 3; k++)
-//            {
-//                dummy.texture.SetPixel(x - k, y - k, Color.red);
-//                dummy.texture.SetPixel(x - k, y + k, Color.red);
-//                dummy.texture.SetPixel(x + k, y - k, Color.red);
-//                dummy.texture.SetPixel(x + k, y + k, Color.red);
-//                dummy.texture.Apply();
-//            }
-//            sprites[0] = dummy;
-//        }
-//    }
-//}
