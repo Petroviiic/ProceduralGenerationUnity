@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Xml.Linq;
 using Unity.VisualScripting.FullSerializer;
 using UnityEngine;
 
@@ -12,19 +13,40 @@ public class CellTile
     private Vector2Int coordinates = new Vector2Int(-1, -1);
     public bool isPlaced = false;
 
+    private int spriteSelection = 0;
     public CellTile(GameObject cell, List<Sprite> options)
     {
         selfObject = cell;
         selfObject.SetActive(false);
         spriteRenderer = selfObject.GetComponent<SpriteRenderer>();
 
-        this.options = options;
+        this.options = new List<Sprite>(options);
+        //foreach(Sprite sprite in this.options)
+        //{
+        //    Debug.Log(sprite.name);
+        //}
+        ShuffleOptions();
         coordinates = new Vector2Int(-1, -1);
         isPlaced = false;
     }
+    private void ShuffleOptions()
+    {
+        int count = options.Count;
+        int last = count - 1;
+        for (int i = 0; i < last; i++)
+        {
+            int r = UnityEngine.Random.Range(i, count);
+            Sprite tmp = this.options[i];
+            this.options[i] = this.options[r];
+            this.options[r] = tmp;
+        }
+    }
+
     public void SetOptions(List<Sprite> options)
     {
+        spriteSelection = 0;
         this.options = options;
+        ShuffleOptions();
     }
     public void UpdateSprite(Sprite sprite)
     {
@@ -32,25 +54,34 @@ public class CellTile
     }
     public string[] Place(Vector2Int coords)
     {
-        if (options.Count < 0)
+        if (options.Count < 0 || spriteSelection >= options.Count)
         {
-            Debug.LogWarning("No available options");
+            Debug.LogWarning("No available options " + options.Count + " " + spriteSelection);
             return null;
         }
         coordinates = coords;
         isPlaced = true;
+        //int rand = UnityEngine.Random.Range(0, GetOptionsCount());
+        UpdateSprite(options[spriteSelection]);
 
-        if (GetOptionsCount() <= 0)
-        {
-            return null;
-        }
-
-        int rand = UnityEngine.Random.Range(0, GetOptionsCount());
-        UpdateSprite(options[rand]);
-
-        string[] marks = TileData.instance.GetData(options[rand]);
-        options.RemoveAt(rand);
+        string[] marks = TileData.instance.GetData(options[spriteSelection]);
+        options.RemoveAt(spriteSelection);
         return marks;
+    }
+    public void ResetCell(Sprite defaultSprite)
+    {
+        coordinates = new Vector2Int(-1, -1);
+        isPlaced = false;
+        spriteRenderer.sprite = defaultSprite;
+        spriteSelection++;
+    }
+    public void RestoreOptions(List<Sprite> savedOptions)
+    {
+        this.options = new List<Sprite>(savedOptions);
+    }
+    public List<Sprite> GetOptions()
+    {
+        return options;
     }
     public int GetOptionsCount()
     {
