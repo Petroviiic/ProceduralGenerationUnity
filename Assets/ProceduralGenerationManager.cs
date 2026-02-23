@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -23,6 +24,7 @@ public class ProceduralGenerationManager : MonoBehaviour
     private Dictionary<Color, char> colorMapping = new Dictionary<Color, char>();
     private char colorMappingIndex = 'A';
 
+    [SerializeField] private float visualizationSpeed = 0.1f;
 
     private Vector2Int[] directions = new Vector2Int[]
     {
@@ -48,7 +50,7 @@ public class ProceduralGenerationManager : MonoBehaviour
             tile.selfObject.SetActive(false);
         }
         activeCells.Clear();
-
+        placedCells.Clear(); 
         int k = 0;
         for (int j = 0; j < rows; j++)
         {
@@ -92,7 +94,7 @@ public class ProceduralGenerationManager : MonoBehaviour
     private void LoadSprites(int colorDiversity)
     {
         sprites.Clear();
-        foreach (Sprite item in Resources.LoadAll<Sprite>("Tiles"))
+        foreach (Sprite item in Resources.LoadAll<Sprite>("Tiles/Tiles1"))
         {
             sprites.Add(item);
         }
@@ -100,6 +102,7 @@ public class ProceduralGenerationManager : MonoBehaviour
 
         Vector2 offset = spriteSize / (colorDiversity * 2);
 
+        List<Sprite> rotatedSprites = new List<Sprite>();
         foreach (Sprite sprite in sprites)
         {
             string[] marks = new string[4];
@@ -139,6 +142,7 @@ public class ProceduralGenerationManager : MonoBehaviour
                     
                 }
             }
+            
             TileData.instance.UpdateData(sprite, marks);
             print((marks[0] + " " + marks[1] + " " + marks[2] + " " + marks[3]));
         }
@@ -154,7 +158,7 @@ public class ProceduralGenerationManager : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.G))            //starts single generation process
         {
-            StartCoroutine(GenerateMap());
+            StartCoroutine(GenerateMapWithBacktracking());
         }
 
         if (Input.GetKeyDown(KeyCode.T))            //starts N generation processes for testing purposes
@@ -163,15 +167,20 @@ public class ProceduralGenerationManager : MonoBehaviour
         }
         if (Input.GetKeyDown(KeyCode.F))            //used for step by step generation
         {
-            foreach (CellTile item in placedCells)
+            if (!isRunning)
             {
-                item.selfObject.GetComponent<SpriteRenderer>().color = Color.white;
+                StartCoroutine(GenerateMapWithBacktracking(stepByStep : true));
+                return;
             }
+            //foreach (CellTile item in placedCells)
+            //{
+            //    item.selfObject.GetComponent<SpriteRenderer>().color = Color.white;
+            //}
             goNext = true;
-            foreach (CellTile item in placedCells)
-            {
-                item.selfObject.GetComponent<SpriteRenderer>().color = Color.blue;
-            }
+            //foreach (CellTile item in placedCells)
+            //{
+            //    item.selfObject.GetComponent<SpriteRenderer>().color = Color.blue;
+            //}
         }
 
         if (Input.GetKeyDown(KeyCode.R))           //safety check, resets the scene
@@ -189,23 +198,118 @@ public class ProceduralGenerationManager : MonoBehaviour
                 yield return null;
             }
             Setup(true);
-            StartCoroutine(GenerateMap(true));
+            StartCoroutine(GenerateMapWithBacktracking(isTestEnv: true));
         }
     }
 
+
+    struct MapState
+    {
+        public Vector2Int currentTilePos;
+        public int currentSpriteIndex;
+        public Dictionary<int, List<Sprite>> optionsSnapshot;       //cellindex, options
+        public List<CellTile> placedTilesSnapshot;
+    }
+    private IEnumerator GenerateMapWithBacktracking(bool isTestEnv = false, bool stepByStep = false)
+    {
+        isRunning = true;
+        goNext = false;
+
+        int placed = 0;
+        Vector2Int coords = new Vector2Int(UnityEngine.Random.Range(0, rows), UnityEngine.Random.Range(0, columns));    //starting coords
+
+        Stack<MapState> history = new Stack<MapState>();
+        while (placed < columns * rows)
+        {
+            print(coords);
+            if (coords.x < 0 || coords.y < 0)
+            {
+                if (history.Count == 0)
+                {
+                    Debug.LogError("History stack is empty");
+                    break;
+                }
+                placed--;
+                MapState lastState = history.Pop();
+                RestoreState(lastState);
+                Debug.LogError("Greska, koordinate ne mogu biti negativne");
+            }
+            else
+            {
+                Dictionary<int, List<Sprite>> options = PlaceTile(coords);
+                if (options != null)
+                {
+                    history.Push(new MapState
+                    {
+                        optionsSnapshot = options,
+                        currentTilePos = coords,
+                        placedTilesSnapshot = new List<CellTile>(placedCells)
+                    });
+                    placed++;
+                }
+                else
+                {
+                    //no available options
+                    if (history.Count == 0)
+                    {
+                        Debug.LogError("History stack is empty");
+                        break;
+                    }
+                    print("backtracking...");
+                    placed--;
+                    MapState lastState = history.Pop();
+                    RestoreState(lastState);
+                }
+            }
+
+
+            print(history.Count);
+            coords = FindNext();
+            if (!stepByStep)
+            {
+                if (isTestEnv)
+                    yield return null;
+                else
+                    yield return new WaitForSeconds(visualizationSpeed);
+            }
+            else
+            {
+                while (!goNext)
+                {
+                    yield return null;
+                }
+
+                goNext = false;
+            }
+        }
+        isRunning = false;
+    }
+    private void RestoreState(MapState state)
+    {
+        foreach (int index in state.optionsSnapshot.Keys)
+        {
+            activeCells[index].RestoreOptions(state.optionsSnapshot[index]);
+        }
+        int currentCell = state.currentTilePos.y + state.currentTilePos.x * columns;
+        activeCells[currentCell].ResetCell(sprites[0]);
+
+        placedCells = new List<CellTile>(state.placedTilesSnapshot);
+    }
+
+    /*
     private IEnumerator GenerateMap(bool isTestEnv = false)
     {
         isRunning = true;
 
         int placed = 0;
-        Vector2Int coords = new Vector2Int(Random.Range(0, rows), Random.Range(0, columns));
+        Vector2Int coords = new Vector2Int(Random.Range(0, rows), Random.Range(0, columns));    //starting coords
 
         for (placed = 0; placed < columns * rows; placed++)     //ovdje mogu staviti while  coords.x>=0 && cords.y >= 0, al aj
         {
             if (isTestEnv)
                 yield return null;
             else
-                yield return new WaitForSeconds(0.01f);
+                yield return new WaitForSeconds(visualizationSpeed);
             //while (!goNext)
             //{
             //    yield return null;
@@ -214,6 +318,32 @@ public class ProceduralGenerationManager : MonoBehaviour
             if (!PlaceTile(coords))
             {
                 Debug.Log("Error placing a tile");
+               
+                 
+                  u Pile pri inicijalizaciji da shufluje options, pa da imam tamo u options zapravo random, 
+                  a ne da ih biram random po indeksu
+                  
+                 optionIndex = 0        //da za pocetak uzme prvi option, koji ce biti random
+                 while (!PlaceTile(coords, optionIndex)){
+                    placed--
+                    pile = stashedPlacedPiles.Pop()
+                    pile.resetPile()
+                        
+                    optionIndex++;
+                    
+                    //  ako su ispucane sve opcije za taj pile:
+                    //  sad ne znam, da li onda treba ispisati gresku u fullu, ili pokusati backtrackovati i coords
+                    //  jer ako ode na lokaciju sa npr drugom najmanjom entropijom, onda bi ova trenutna lokacija svakako mogla biti 
+                    //  nepopunjena? mzd? ili pricam gluposti. imam cini mi se dvije opcije:
+                    //  da se vrati na prosli postavljeni tile, pa da za njega poveca optionindex, i uzme sljedeci koji je dostupan,
+                    //  pa ce se potencijalno uklopiti i ovaj; ili da se ne mijenja optionIndex, nego da se nadje mjesto sa n-tom najmanjom entropijom
+                    //  ce vidimo
+                    if optionIndex >= pile.options.Count    {        
+                                
+                        break;
+                    }
+                    Debug.Log("Inverting options")
+                 } 
                 break;
             }
             coords = FindNext();
@@ -225,6 +355,7 @@ public class ProceduralGenerationManager : MonoBehaviour
         }
         isRunning = false;
     }
+     */
     private Vector2Int FindNext()
     {   
         int leastEntrophy = int.MaxValue;
@@ -273,18 +404,22 @@ public class ProceduralGenerationManager : MonoBehaviour
                 continue;
             }
             i++;
-        }                
+        }        
+        if (leastEntrophy == 0) //backtrack immediatelly
+            return new Vector2Int(-1, -1);
         return coordinates;
     }
-    private bool PlaceTile(Vector2Int pos)
+    private Dictionary<int, List<Sprite>> PlaceTile(Vector2Int pos)
     {
         CellTile toPlace = activeCells[pos.y + pos.x * columns];
 
         string[] tileMarks = toPlace.Place(new Vector2Int(pos.x, pos.y));
         if (tileMarks == null)
         {
-            return false;
+            return null;
         }
+        Dictionary<int, List<Sprite>> optionsSnapshot = new Dictionary<int, List<Sprite>>();
+        optionsSnapshot[pos.y + pos.x * columns] = new List<Sprite>(activeCells[pos.y + pos.x * columns].GetOptions());
 
         print(("Postavio na : ", pos, " tj indeks: ", pos.y + pos.x * columns));
 
@@ -296,10 +431,12 @@ public class ProceduralGenerationManager : MonoBehaviour
             if (x < 0 || y < 0 || x >= rows || y >= columns)
                 continue;
 
-            activeCells[y + x * columns].CheckCompatibility(tileMarks[i], i); //ovdje ce biti greska sa indeksom
+            int index = y + x * columns;
+            optionsSnapshot[index] = new List<Sprite>(activeCells[index].GetOptions()); 
+            activeCells[index].CheckCompatibility(tileMarks[i], i); //ovdje ce biti greska sa indeksom
         }
         placedCells.Add(toPlace);
-        return true;
+        return optionsSnapshot;
     }
 }
 
