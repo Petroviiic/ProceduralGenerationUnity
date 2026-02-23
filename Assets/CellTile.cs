@@ -13,7 +13,7 @@ public class CellTile
     private Vector2Int coordinates = new Vector2Int(-1, -1);
     public bool isPlaced = false;
 
-    private int spriteSelection = 0;
+    public int spriteSelection { get; private set; }
     public CellTile(GameObject cell, List<Sprite> options)
     {
         selfObject = cell;
@@ -68,12 +68,12 @@ public class CellTile
         options.RemoveAt(spriteSelection);
         return marks;
     }
-    public void ResetCell(Sprite defaultSprite)
+    public void ResetCell(Sprite defaultSprite, int spriteSelection)
     {
         coordinates = new Vector2Int(-1, -1);
         isPlaced = false;
         spriteRenderer.sprite = defaultSprite;
-        spriteSelection++;
+        this.spriteSelection = spriteSelection;
     }
     public void RestoreOptions(List<Sprite> savedOptions)
     {
