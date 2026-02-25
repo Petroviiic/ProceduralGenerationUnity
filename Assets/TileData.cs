@@ -24,6 +24,7 @@ public class TileData : MonoBehaviour
         {
             return data[sprite];
         }
+        Debug.LogWarning("no available data for sprite " + sprite.name);
         return null;
     }
 }
