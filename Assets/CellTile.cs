@@ -54,7 +54,7 @@ public class CellTile
     }
     public string[] Place(Vector2Int coords)
     {
-        if (options.Count < 0 || spriteSelection >= options.Count)
+        if (options.Count <= 0)
         {
             Debug.LogWarning("No available options " + options.Count + " " + spriteSelection);
             return null;
@@ -62,14 +62,18 @@ public class CellTile
         coordinates = coords;
         isPlaced = true;
         //int rand = UnityEngine.Random.Range(0, GetOptionsCount());
-        UpdateSprite(options[spriteSelection]);
+        UpdateSprite(options[options.Count - 1]);
 
-        string[] marks = TileData.instance.GetData(options[spriteSelection]);
-        options.RemoveAt(spriteSelection);
+        string[] marks = TileData.instance.GetData(options[options.Count - 1]);
+        //options.RemoveAt(0);
         return marks;
     }
     public void ResetCell(Sprite defaultSprite, int spriteSelection)
     {
+        if (options.Count > 0)
+        {
+            options.RemoveAt(options.Count - 1); 
+        }
         coordinates = new Vector2Int(-1, -1);
         isPlaced = false;
         spriteRenderer.sprite = defaultSprite;

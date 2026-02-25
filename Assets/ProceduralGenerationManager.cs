@@ -16,7 +16,7 @@ public class ProceduralGenerationManager : MonoBehaviour
     [SerializeField] private int rows = 3;
     [SerializeField] private int columns = 4;
     [SerializeField] private Vector2 gridOffset;
-    [SerializeField] private Vector2 cellSize = new Vector2(1, 1);
+    private Vector2 cellSize = new Vector2(1, 1);
 
     private List<CellTile> cellPool = new List<CellTile>();
     [HideInInspector] public List<CellTile> activeCells = new List<CellTile>();
@@ -57,7 +57,8 @@ public class ProceduralGenerationManager : MonoBehaviour
         }
         activeCells.Clear();
         placedCells.Clear();
-        
+
+        cellSize = new Vector2(100 / (float)sprites[0].texture.width, 100 / (float)sprites[0].texture.height);
         int k = 0;
         for (int j = 0; j < rows; j++)
         {
@@ -73,11 +74,13 @@ public class ProceduralGenerationManager : MonoBehaviour
                     cellPool.Add(cellTile);
                     
                     gameObjectToCell.Add(cell, cellTile);
+                    
+                    cell.transform.localScale = cellSize;
                 }
 
                 cellTile = cellPool[k];
                 cellTile.selfObject.SetActive(true);
-                cellTile.selfObject.transform.localPosition = gridOffset + new Vector2(i * cellSize.x, -j * cellSize.y);
+                cellTile.selfObject.transform.localPosition = gridOffset + new Vector2(i, -j);
 
                 cellTile.UpdateSprite(sprites[0]);
                 cellTile.SetOptions(sprites.GetRange(1, sprites.Count - 1));
@@ -90,13 +93,13 @@ public class ProceduralGenerationManager : MonoBehaviour
     private void AdjustFOV()
     {
         Vector3 gridPosition = Camera.main.ScreenToWorldPoint(new Vector3(Screen.width / 2, Screen.height / 2, 10));
-        gridPosition += new Vector3(-cellSize.x * (columns - 1) / 2, cellSize.y * (rows - 1) / 2);
+        gridPosition += new Vector3(-1 * (columns - 1) / 2, 1 * (rows - 1) / 2);
         gridParent.localPosition = gridPosition;
 
         float aspectRatio = (float)Screen.width / (float)Screen.height;
 
-        float sizeByHeight = rows * cellSize.y / 2f;
-        float sizeByWidth = (columns * cellSize.x / 2f) / aspectRatio;
+        float sizeByHeight = rows * 1 / 2f;
+        float sizeByWidth = (columns * 1 / 2f) / aspectRatio;
         float padding = 1.1f;
         float finalSize = Mathf.Max(sizeByHeight, sizeByWidth) * padding;
         Camera.main.orthographicSize = Mathf.Max(5f, finalSize);
@@ -106,6 +109,12 @@ public class ProceduralGenerationManager : MonoBehaviour
         sprites.Clear();
         //foreach (Sprite item in Resources.LoadAll<Sprite>("Tiles/MyTiles"))
         foreach (Sprite item in Resources.LoadAll<Sprite>("Images/circuit"))
+        //foreach (Sprite item in Resources.LoadAll<Sprite>("Images/demo"))
+        //foreach (Sprite item in Resources.LoadAll<Sprite>("Images/polka"))
+        //foreach (Sprite item in Resources.LoadAll<Sprite>("Images/rail"))
+        //foreach (Sprite item in Resources.LoadAll<Sprite>("Images/roads"))
+        //foreach (Sprite item in Resources.LoadAll<Sprite>("Images/mountains"))      //-----------!!!!!!!!!!!!
+        //foreach (Sprite item in Resources.LoadAll<Sprite>("Images/circuit-coding-train"))
         {
             sprites.Add(item);
         }
@@ -282,6 +291,7 @@ public class ProceduralGenerationManager : MonoBehaviour
         while (placed < columns * rows)
         {
             print(coords);
+            bool shouldContinue = false;
             if (coords.x < 0 || coords.y < 0)
             {
                 if (history.Count == 0)
@@ -295,7 +305,7 @@ public class ProceduralGenerationManager : MonoBehaviour
                 Debug.LogError("Greska, koordinate ne mogu biti negativne");
 
                 coords = lastState.currentTilePos;
-                continue;
+                shouldContinue = true;
             }
             else
             {
@@ -325,13 +335,14 @@ public class ProceduralGenerationManager : MonoBehaviour
                     RestoreState(lastState);
                     
                     coords = lastState.currentTilePos;
-                    continue;
+                    shouldContinue = true;
                 }
             }
 
 
             print(history.Count);
-            coords = FindNext();
+            if (!shouldContinue)
+                coords = FindNext();
             if (!stepByStep)
             {
                 if (isTestEnv)
@@ -485,6 +496,7 @@ public class ProceduralGenerationManager : MonoBehaviour
         string[] tileMarks = toPlace.Place(new Vector2Int(pos.x, pos.y));
         if (tileMarks == null)
         {
+            print("tilemarks empty");
             return null;
         }
 
