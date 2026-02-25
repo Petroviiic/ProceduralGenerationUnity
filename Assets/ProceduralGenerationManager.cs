@@ -3,9 +3,10 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Unity.VisualScripting;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using static UnityEditor.PlayerSettings;
+
 
 public class ProceduralGenerationManager : MonoBehaviour
 {
@@ -18,7 +19,8 @@ public class ProceduralGenerationManager : MonoBehaviour
     [SerializeField] private Vector2 cellSize = new Vector2(1, 1);
 
     private List<CellTile> cellPool = new List<CellTile>();
-    private List<CellTile> activeCells = new List<CellTile>();
+    [HideInInspector] public List<CellTile> activeCells = new List<CellTile>();
+    [HideInInspector] public Dictionary<GameObject, CellTile> gameObjectToCell = new Dictionary<GameObject, CellTile>();
     private List<CellTile> placedCells = new List<CellTile>();
 
     private List<Sprite> sprites = new List<Sprite>();
@@ -54,7 +56,8 @@ public class ProceduralGenerationManager : MonoBehaviour
             tile.selfObject.SetActive(false);
         }
         activeCells.Clear();
-        placedCells.Clear(); 
+        placedCells.Clear();
+        
         int k = 0;
         for (int j = 0; j < rows; j++)
         {
@@ -68,6 +71,8 @@ public class ProceduralGenerationManager : MonoBehaviour
                                         
                     cellTile = new CellTile(cell, sprites.GetRange(1, sprites.Count-1));
                     cellPool.Add(cellTile);
+                    
+                    gameObjectToCell.Add(cell, cellTile);
                 }
 
                 cellTile = cellPool[k];
@@ -77,6 +82,7 @@ public class ProceduralGenerationManager : MonoBehaviour
                 cellTile.UpdateSprite(sprites[0]);
                 cellTile.SetOptions(sprites.GetRange(1, sprites.Count - 1));
                 activeCells.Add(cellTile);
+
                 k++;
             }
         }
@@ -287,6 +293,9 @@ public class ProceduralGenerationManager : MonoBehaviour
                 MapState lastState = history.Pop();
                 RestoreState(lastState);
                 Debug.LogError("Greska, koordinate ne mogu biti negativne");
+
+                coords = lastState.currentTilePos;
+                continue;
             }
             else
             {
@@ -314,6 +323,9 @@ public class ProceduralGenerationManager : MonoBehaviour
                     placed--;
                     MapState lastState = history.Pop();
                     RestoreState(lastState);
+                    
+                    coords = lastState.currentTilePos;
+                    continue;
                 }
             }
 
@@ -468,13 +480,13 @@ public class ProceduralGenerationManager : MonoBehaviour
     {
         CellTile toPlace = activeCells[pos.y + pos.x * columns];
 
+        Dictionary<int, List<Sprite>> optionsSnapshot = new Dictionary<int, List<Sprite>>();
+        optionsSnapshot[pos.y + pos.x * columns] = new List<Sprite>(activeCells[pos.y + pos.x * columns].GetOptions());
         string[] tileMarks = toPlace.Place(new Vector2Int(pos.x, pos.y));
         if (tileMarks == null)
         {
             return null;
         }
-        Dictionary<int, List<Sprite>> optionsSnapshot = new Dictionary<int, List<Sprite>>();
-        optionsSnapshot[pos.y + pos.x * columns] = new List<Sprite>(activeCells[pos.y + pos.x * columns].GetOptions());
 
         print(("Postavio na : ", pos, " tj indeks: ", pos.y + pos.x * columns));
 
@@ -489,6 +501,9 @@ public class ProceduralGenerationManager : MonoBehaviour
             int index = y + x * columns;
             optionsSnapshot[index] = new List<Sprite>(activeCells[index].GetOptions()); 
             activeCells[index].CheckCompatibility(tileMarks[i], i); //ovdje ce biti greska sa indeksom
+
+
+            //neka return null ako neki od komsija ima optionscount == 0
         }
         placedCells.Add(toPlace);
         return optionsSnapshot;
@@ -499,39 +514,44 @@ public class ProceduralGenerationManager : MonoBehaviour
 
 
 
-
-
-
-
-
-
-
-
-
     void VisualizePixelsChecked(int colorDiversity, Vector2Int spriteSize)
     {
-        Sprite toCopy = sprites[4];
+        Sprite toCopy = sprites[0];
         Sprite dummy = Sprite.Create(new Texture2D(spriteSize.x, spriteSize.y, toCopy.texture.format, toCopy.texture.mipmapCount, true), new Rect(0, 0, spriteSize.x, spriteSize.y), new Vector2(0.5f, 0.5f));
         Graphics.CopyTexture(toCopy.texture, dummy.texture);
         dummy.texture.Apply();
 
-        int x, y;
         Vector2 offset = spriteSize / (colorDiversity * 2);
-        for (int i = 0; i < colorDiversity; i++)
+        int x = 0, y = 0;
+        for (int side = 0; side < 4; side++)    // origin corner: bottom-left;  directions : up, right, down, left
         {
-            for (int j = 0; j < colorDiversity; j++)
+            for (int i = 0; i < colorDiversity; i++)
             {
-                x = (int)(offset.x + j * spriteSize.x / colorDiversity);
-                y = (int)(offset.y + i * spriteSize.y / colorDiversity);
+                int step = (side == 0 || side == 1) ? i : (colorDiversity - 1 - i);
 
+                if (side == 0) //bottom - top
+                {
+                    y = (int)(offset.y + step * spriteSize.y / colorDiversity);
+                    x = (int)(offset.y);
+                }
+                else if (side == 1) //left - right
+                {
+                    x = (int)(offset.x + step * spriteSize.x / colorDiversity);
+                    y = (int)(offset.y + (colorDiversity - 1) * spriteSize.y / colorDiversity);
+                }
+                else if (side == 2) //top - bot
+                {
+                    y = (int)(offset.y + step * spriteSize.y / colorDiversity);
+                    x = (int)(offset.x + (colorDiversity - 1) * spriteSize.x / colorDiversity);
+                }
+                else if (side == 3) //right - left
+                {
+                    x = (int)(offset.x + step * spriteSize.x / colorDiversity);
+                    y = (int)(offset.y);
+                }
                 Color color = dummy.texture.GetPixel(x, y);
-                //if (!colorMapping.ContainsKey(color))
-                //{
-                //    colorMapping[color] = colorMappingIndex++;
-                //}
-                // print(colorMapping[color]);
 
-                    dummy.texture.SetPixel(x, y, Color.red);
+                dummy.texture.SetPixel(x, y, Color.red);
                 for (int k = 0; k < 3; k++)
                 {
                     //dummy.texture.SetPixel(x - k, y - k, Color.red);
