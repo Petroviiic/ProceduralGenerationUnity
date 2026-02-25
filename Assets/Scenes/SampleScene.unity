@@ -204,7 +204,6 @@ MonoBehaviour:
   rows: 20
   columns: 20
   gridOffset: {x: 0, y: 0}
-  cellSize: {x: 1, y: 1}
   colorDiversity: 20
   visualizationSpeed: 0.1
 --- !u!4 &429365954
