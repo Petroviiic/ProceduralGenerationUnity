@@ -57,7 +57,8 @@ public class VisualizationScript : MonoBehaviour
             // 3. ISPIS TEKSTA (ENTROPIJA)
             // Koristimo #if jer UnityEditor ne radi kad se igra napravi (Build)
 #if UNITY_EDITOR
-            string info = cell.isPlaced ? "OK" : cell.spriteSelection.ToString() + "\n" + cell.GetOptionsCount().ToString();
+            //string info = cell.isPlaced ? "OK" : cell.spriteSelection.ToString() + "\n" + cell.GetOptionsCount().ToString();
+            string info = cell.isPlaced ? "OK" : cell.GetOptionsCount().ToString();
 
             // Postavi boju labela (crveno ako je 0 - to je tvoj problem!)
             GUIStyle style = new GUIStyle();
