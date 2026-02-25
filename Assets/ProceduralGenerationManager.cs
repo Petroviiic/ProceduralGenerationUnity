@@ -108,12 +108,12 @@ public class ProceduralGenerationManager : MonoBehaviour
     {
         sprites.Clear();
         //foreach (Sprite item in Resources.LoadAll<Sprite>("Tiles/MyTiles"))
-        foreach (Sprite item in Resources.LoadAll<Sprite>("Images/circuit"))
+        //foreach (Sprite item in Resources.LoadAll<Sprite>("Images/circuit"))
         //foreach (Sprite item in Resources.LoadAll<Sprite>("Images/demo"))
         //foreach (Sprite item in Resources.LoadAll<Sprite>("Images/polka"))
         //foreach (Sprite item in Resources.LoadAll<Sprite>("Images/rail"))
         //foreach (Sprite item in Resources.LoadAll<Sprite>("Images/roads"))
-        //foreach (Sprite item in Resources.LoadAll<Sprite>("Images/mountains"))      //-----------!!!!!!!!!!!!
+        foreach (Sprite item in Resources.LoadAll<Sprite>("Images/mountains"))      //-----------!!!!!!!!!!!!
         //foreach (Sprite item in Resources.LoadAll<Sprite>("Images/circuit-coding-train"))
         {
             sprites.Add(item);
