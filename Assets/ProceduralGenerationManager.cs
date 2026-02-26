@@ -26,8 +26,8 @@ public class ProceduralGenerationManager : MonoBehaviour
     private List<Sprite> sprites = new List<Sprite>();
 
     [SerializeField] private int colorDiversity = 3;
-    private Dictionary<Color, char> colorMapping = new Dictionary<Color, char>();
-    private char colorMappingIndex = 'A';
+    private Dictionary<Color, int> colorMapping = new Dictionary<Color, int>();
+    private int colorMappingIndex = 1;
 
     [SerializeField] private float visualizationSpeed = 0.1f;
 
@@ -45,6 +45,7 @@ public class ProceduralGenerationManager : MonoBehaviour
     public void Setup(bool isReset)
     {
         AdjustFOV();
+
 
         if (!isReset)
             LoadSprites(colorDiversity);
@@ -113,8 +114,8 @@ public class ProceduralGenerationManager : MonoBehaviour
         //foreach (Sprite item in Resources.LoadAll<Sprite>("Images/polka"))
         //foreach (Sprite item in Resources.LoadAll<Sprite>("Images/rail"))
         //foreach (Sprite item in Resources.LoadAll<Sprite>("Images/roads"))
-        foreach (Sprite item in Resources.LoadAll<Sprite>("Images/mountains"))      //-----------!!!!!!!!!!!!
-        //foreach (Sprite item in Resources.LoadAll<Sprite>("Images/circuit-coding-train"))
+       // foreach (Sprite item in Resources.LoadAll<Sprite>("Images/mountains"))      //-----------!!!!!!!!!!!!
+        foreach (Sprite item in Resources.LoadAll<Sprite>("Images/circuit-coding-train"))
         {
             sprites.Add(item);
         }
@@ -125,45 +126,10 @@ public class ProceduralGenerationManager : MonoBehaviour
         List<Sprite> rotatedSprites = new List<Sprite>();
         foreach (Sprite sprite in sprites)
         {
-            string[] marks = new string[4];
-            int x = 0 , y = 0;
-            for (int side = 0; side < 4; side++)    // origin corner: bottom-left;  directions : up, right, down, left
-            {
-                for (int i = 0; i < colorDiversity; i++)
-                {
-                    int step = (side == 0 || side == 1) ? i : (colorDiversity - 1 - i);
+            int[] marks = ProcessColorMarks(offset, sprite, spriteSize);
 
-                    if (side == 0) //bottom - top
-                    {
-                        y = (int)(offset.y + step * spriteSize.y / colorDiversity);
-                        x = (int)(offset.y);
-                    }
-                    else if (side == 1) //left - right
-                    {
-                        x = (int)(offset.x + step * spriteSize.x / colorDiversity);
-                        y = (int)(offset.y + (colorDiversity - 1) * spriteSize.y / colorDiversity);
-                    }
-                    else if (side == 2) //top - bot
-                    {
-                        y = (int)(offset.y + step * spriteSize.y / colorDiversity);
-                        x = (int)(offset.x + (colorDiversity - 1) * spriteSize.x / colorDiversity);
-                    }
-                    else if (side == 3) //right - left
-                    {
-                        x = (int)(offset.x + step * spriteSize.x / colorDiversity);
-                        y = (int)(offset.y);
-                    }
-                    Color color = sprite.texture.GetPixel(x, y);
-                    if (!colorMapping.ContainsKey(color))
-                    {
-                        colorMapping[color] = colorMappingIndex++;
-                    }
-                    marks[side] += colorMapping[color];
-                    
-                }
-            }
             TileData.instance.UpdateData(sprite, marks);
-            print((marks[0] + " " + marks[1] + " " + marks[2] + " " + marks[3]));
+            
 
             if (marks[0] == marks[1] && marks[1] == marks[2] && marks[2] == marks[3])
                 continue;
@@ -182,19 +148,17 @@ public class ProceduralGenerationManager : MonoBehaviour
                 
                 rotatedSprites.Add(rotation);
 
-                int splitIndex = 4 - n - 1; 
-                string[] firstPart = new string[splitIndex];
-                string[] secondPart = new string[marks.Length - splitIndex];
-                Array.Copy(marks, 0, firstPart, 0, splitIndex);
-                Array.Copy(marks, splitIndex, secondPart, 0, secondPart.Length);
-                string[] rotatedMarks = secondPart.Concat(firstPart).ToArray();
+                //int splitIndex = 4 - n - 1; 
+                //int[] firstPart = new int[splitIndex];
+                //int[] secondPart = new int[marks.Length - splitIndex];
+                //Array.Copy(marks, 0, firstPart, 0, splitIndex);
+                //Array.Copy(marks, splitIndex, secondPart, 0, secondPart.Length);
+                //int[] rotatedMarks = secondPart.Concat(firstPart).ToArray();
+
+                int[] rotatedMarks = ProcessColorMarks(offset, rotation, spriteSize);
 
                 original = rotated;
 
-                //GameObject test = new GameObject();
-                //test.AddComponent<SpriteRenderer>();
-                //test.GetComponent<SpriteRenderer>().sprite = rotation;
-                //test.transform.position = new Vector3(n*1.1f, 3, 1);
                 //print(("rotacija "+ n +" "+ rotatedMarks[0] + " " + rotatedMarks[1] + " " + rotatedMarks[2] + " " + rotatedMarks[3]));
                 TileData.instance.UpdateData(rotation, rotatedMarks);  
             }
@@ -202,6 +166,62 @@ public class ProceduralGenerationManager : MonoBehaviour
         }
         sprites.AddRange(rotatedSprites);
     }
+
+    private int[] ProcessColorMarks(Vector2 offset, Sprite sprite, Vector2 spriteSize)
+    {
+        int[] marks = new int[4];
+        string[] marksString = new string[4];
+        int x = 0, y = 0;
+        for (int side = 0; side < 4; side++)    // origin corner: bottom-left;  directions : up, right, down, left
+        {
+            for (int i = 0; i < colorDiversity; i++)
+            {
+                // int step = (side == 0 || side == 1) ? i : (colorDiversity - 1 - i);
+                int step = (side == 0 || side == 1) ? i : i;
+
+                if (side == 0) //bottom - top
+                {
+                    y = (int)(offset.y + step * spriteSize.y / colorDiversity);
+                    x = (int)(offset.y);
+                }
+                else if (side == 1) //left - right
+                {
+                    x = (int)(offset.x + step * spriteSize.x / colorDiversity);
+                    y = (int)(offset.y + (colorDiversity - 1) * spriteSize.y / colorDiversity);
+                }
+                else if (side == 2) //top - bot
+                {
+                    y = (int)(offset.y + step * spriteSize.y / colorDiversity);
+                    x = (int)(offset.x + (colorDiversity - 1) * spriteSize.x / colorDiversity);
+                }
+                else if (side == 3) //right - left
+                {
+                    x = (int)(offset.x + step * spriteSize.x / colorDiversity);
+                    y = (int)(offset.y);
+                }
+                Color32 color = sprite.texture.GetPixel(x, y);
+                color.r = (byte)((color.r / 8) * 8);
+                color.g = (byte)((color.g / 8) * 8);
+                color.b = (byte)((color.b / 8) * 8);
+                if (!colorMapping.ContainsKey(color))
+                {
+                    colorMapping[color] = colorMappingIndex++;
+                }
+                marks[side] = (int)(marks[side] * 31 + colorMapping[color]) % 1000000;
+                marksString[side] += colorMapping[color];
+
+            }
+        }
+        //print((sprite.name + ": " + marks[0] + " " + marks[1] + " " + marks[2] + " " + marks[3]));
+        print((sprite.name + ": " + marksString[0] + " " + marksString[1] + " " + marksString[2] + " " + marksString[3]));
+        return marks;
+    }
+
+
+
+
+
+
     private Color32[] RotateTexture(Color32[] original, int size)
     {
         //rotates clockwise
@@ -493,7 +513,7 @@ public class ProceduralGenerationManager : MonoBehaviour
 
         Dictionary<int, List<Sprite>> optionsSnapshot = new Dictionary<int, List<Sprite>>();
         optionsSnapshot[pos.y + pos.x * columns] = new List<Sprite>(activeCells[pos.y + pos.x * columns].GetOptions());
-        string[] tileMarks = toPlace.Place(new Vector2Int(pos.x, pos.y));
+        int[] tileMarks = toPlace.Place(new Vector2Int(pos.x, pos.y));
         if (tileMarks == null)
         {
             print("tilemarks empty");
