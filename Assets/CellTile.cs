@@ -21,10 +21,6 @@ public class CellTile
         spriteRenderer = selfObject.GetComponent<SpriteRenderer>();
 
         this.options = new List<Sprite>(options);
-        //foreach(Sprite sprite in this.options)
-        //{
-        //    Debug.Log(sprite.name);
-        //}
         ShuffleOptions();
         coordinates = new Vector2Int(-1, -1);
         isPlaced = false;
@@ -52,7 +48,7 @@ public class CellTile
     {
         spriteRenderer.sprite = sprite;
     }
-    public string[] Place(Vector2Int coords)
+    public int[] Place(Vector2Int coords)
     {
         if (options.Count <= 0)
         {
@@ -61,11 +57,9 @@ public class CellTile
         }
         coordinates = coords;
         isPlaced = true;
-        //int rand = UnityEngine.Random.Range(0, GetOptionsCount());
         UpdateSprite(options[options.Count - 1]);
 
-        string[] marks = TileData.instance.GetData(options[options.Count - 1]);
-        //options.RemoveAt(0);
+        int[] marks = TileData.instance.GetData(options[options.Count - 1]);
         return marks;
     }
     public void ResetCell(Sprite defaultSprite, int spriteSelection)
@@ -96,30 +90,30 @@ public class CellTile
         return coordinates;
     }
 
-    public void CheckCompatibility(string origin, int side)
+    public void CheckCompatibility(int origin, int side)
     {
         List<Sprite> toRemove = new List<Sprite>();
         for(int i = 0; i < options.Count; i++)
         {
-            string[] marks = TileData.instance.GetData(options[i]);
+            int[] marks = TileData.instance.GetData(options[i]);
             if (side == 0)      //origin:left - this : right
             {
-                if (origin != ReverseString(marks[2]))
+                if (origin != marks[2])
                     toRemove.Add(options[i]);
             }
             else if (side == 1) //origin:up - this : down
             {
-                if (origin != ReverseString(marks[3]))
+                if (origin != marks[3])
                     toRemove.Add(options[i]);
             }
             else if (side == 2) //origin:right - this : left
             {
-                if (origin != ReverseString(marks[0]))
+                if (origin != marks[0])
                     toRemove.Add(options[i]);
             }
             else if (side == 3) //origin:down - this : up
             {
-                if (origin != ReverseString(marks[1]))
+                if (origin != marks[1])
                     toRemove.Add(options[i]);
             }
         }
@@ -127,23 +121,5 @@ public class CellTile
         {
             options.Remove(i);
         }
-    }
-
-    public static string ReverseString(string value)
-    {
-        Span<char> charSpan = value.ToCharArray();
-
-        int left = 0, right = charSpan.Length - 1;
-        while (left < right)
-        {
-            char temp = charSpan[left];
-            charSpan[left] = charSpan[right];
-            charSpan[right] = temp;
-
-            left++;
-            right--;
-        }
-
-        return new string(charSpan);
     }
 }

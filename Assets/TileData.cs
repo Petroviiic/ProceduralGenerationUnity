@@ -6,19 +6,19 @@ public class TileData : MonoBehaviour
 {
     //ovo moze biti i scriptable object. first make it work, then make it beautiful
 
-    private Dictionary<Sprite, string[]> data = new Dictionary<Sprite, string[]>();
+    private Dictionary<Sprite, int[]> data = new Dictionary<Sprite, int[]>();
 
     public static TileData instance;
     private void Awake()
     {
         instance = this;
     }
-    public void UpdateData(Sprite sprite, string[] colorData)
+    public void UpdateData(Sprite sprite, int[] colorData)
     {
         data[sprite] = colorData;
     }
 
-    public string[] GetData(Sprite sprite)
+    public int[] GetData(Sprite sprite)
     {
         if (data.ContainsKey(sprite))
         {
