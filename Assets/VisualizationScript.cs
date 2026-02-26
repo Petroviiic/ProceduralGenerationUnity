@@ -4,15 +4,21 @@ using UnityEngine;
 using UnityEditor;
 using Unity.VisualScripting;
 using System.Globalization;
+using UnityEngine.UI;
 
 
 public class VisualizationScript : MonoBehaviour
 {
     [SerializeField] private ProceduralGenerationManager manager;
-    [SerializeField] private SpriteRenderer showSprite;
+    [SerializeField] private Image showImage;
     private CellTile lastSelectedTile;
     private int spriteIndex;
 
+    private Sprite defaultSprite;
+    private void Start()
+    {
+        showImage.sprite = null;
+    }
     private void Update()
     {
         if (Input.GetMouseButtonDown(0))
@@ -41,12 +47,18 @@ public class VisualizationScript : MonoBehaviour
                     }
                 }
             }
+            else
+            {
+                #if UNITY_EDITOR
+                    UnityEditor.Selection.activeGameObject = null;
+                #endif
+                DrawCellDetails(null);
+            }
         }
     }
 
     private void OnDrawGizmos()
     {
-        //ispis broja preostalih celija
         foreach (var cell in manager.activeCells)
         {
             Vector3 pos = cell.selfObject.transform.position;
@@ -54,34 +66,35 @@ public class VisualizationScript : MonoBehaviour
             Gizmos.color = cell.isPlaced ? Color.green : Color.white;
             Gizmos.DrawWireCube(pos, Vector3.one * 0.9f);
 
-            // 3. ISPIS TEKSTA (ENTROPIJA)
-            // Koristimo #if jer UnityEditor ne radi kad se igra napravi (Build)
 #if UNITY_EDITOR
-            //string info = cell.isPlaced ? "OK" : cell.spriteSelection.ToString() + "\n" + cell.GetOptionsCount().ToString();
             string info = cell.isPlaced ? "OK" : cell.GetOptionsCount().ToString();
 
-            // Postavi boju labela (crveno ako je 0 - to je tvoj problem!)
             GUIStyle style = new GUIStyle();
             style.normal.textColor = (cell.GetOptionsCount() == 0 && !cell.isPlaced) ? Color.red : Color.white;
-            style.alignment = TextAnchor.LowerCenter;
+            style.alignment = TextAnchor.MiddleCenter;
 
             Handles.Label(pos, info, style);
-
 
             if (Selection.activeGameObject != null && Selection.activeGameObject == cell.selfObject)
             {
                 DrawCellDetails(cell);
             }
+            
             #endif
         }
     }
     private void DrawCellDetails(CellTile cell)
     {
+        if (cell == null) 
+        {
+            showImage.sprite = defaultSprite;
+            return;
+        }
         if (cell.GetOptionsCount()==0)
         {
             return;
         }
         spriteIndex = spriteIndex % cell.GetOptionsCount();
-        showSprite.sprite = cell.GetOptions()[spriteIndex];
+        showImage.sprite = cell.GetOptions()[spriteIndex];
     }
 }
