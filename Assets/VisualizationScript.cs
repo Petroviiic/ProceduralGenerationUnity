@@ -57,6 +57,8 @@ public class VisualizationScript : MonoBehaviour
         }
     }
 
+    //ovo ce raditi samo ako je ukljucen ondrawgizmos, pa onda ili napravi da onaj visualizationsprite nestane kad gizmos nisu ukljuceni
+    //ili napravi da ne zavisi od gizmosa uopste
     private void OnDrawGizmos()
     {
         foreach (var cell in manager.activeCells)
