@@ -7,6 +7,7 @@ using UnityEngine;
 public class CellTile
 {
     public GameObject selfObject { get; private set; }
+    public BoxCollider2D selfCollider { get; private set; }
     private SpriteRenderer spriteRenderer;
 
     private List<Sprite> options = new List<Sprite>();
@@ -17,6 +18,8 @@ public class CellTile
     public CellTile(GameObject cell, List<Sprite> options)
     {
         selfObject = cell;
+        selfCollider = selfObject.GetComponent<BoxCollider2D>();
+       
         selfObject.SetActive(false);
         spriteRenderer = selfObject.GetComponent<SpriteRenderer>();
 
@@ -46,6 +49,7 @@ public class CellTile
     }
     public void UpdateSprite(Sprite sprite)
     {
+        selfCollider.size =  new Vector2(sprite.texture.width / 100, sprite.texture.height / 100);
         spriteRenderer.sprite = sprite;
     }
     public int[] Place(Vector2Int coords)

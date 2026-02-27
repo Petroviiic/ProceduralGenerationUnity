@@ -242,16 +242,21 @@ public class ProceduralGenerationManager : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.Space))        //inits grid only
         {
+            isRunning = false;
             Setup(isReset);     
         }
 
         if (Input.GetKeyDown(KeyCode.G))            //starts single generation process
         {
+            isRunning = false;
+            Setup(true);
             StartCoroutine(GenerateMapWithBacktracking());
         }
 
         if (Input.GetKeyDown(KeyCode.T))            //starts N generation processes for testing purposes
         {
+            isRunning = false;
+            Setup(true);
             StartCoroutine(TestGeneration(20));
         }
         if (Input.GetKeyDown(KeyCode.F))            //used for step by step generation
@@ -261,15 +266,7 @@ public class ProceduralGenerationManager : MonoBehaviour
                 StartCoroutine(GenerateMapWithBacktracking(stepByStep : true));
                 return;
             }
-            //foreach (CellTile item in placedCells)
-            //{
-            //    item.selfObject.GetComponent<SpriteRenderer>().color = Color.white;
-            //}
             goNext = true;
-            //foreach (CellTile item in placedCells)
-            //{
-            //    item.selfObject.GetComponent<SpriteRenderer>().color = Color.blue;
-            //}
         }
 
         if (Input.GetKeyDown(KeyCode.R))           //safety check, resets the scene

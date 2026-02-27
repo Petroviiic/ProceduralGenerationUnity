@@ -71,7 +71,7 @@ public class VisualizationScript : MonoBehaviour
 
             GUIStyle style = new GUIStyle();
             style.normal.textColor = (cell.GetOptionsCount() == 0 && !cell.isPlaced) ? Color.red : Color.white;
-            style.alignment = TextAnchor.MiddleCenter;
+            style.alignment = TextAnchor.LowerCenter;
 
             Handles.Label(pos, info, style);
 
