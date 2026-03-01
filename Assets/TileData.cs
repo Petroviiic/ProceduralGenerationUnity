@@ -1,30 +1,27 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class TileData : MonoBehaviour 
+[CreateAssetMenu(menuName = "TileData")]
+
+[System.Serializable]
+public class TileData : ScriptableObject 
 {
-    //ovo moze biti i scriptable object. first make it work, then make it beautiful
+    public int colorDiversity;
 
-    private Dictionary<Sprite, int[]> data = new Dictionary<Sprite, int[]>();
 
-    public static TileData instance;
-    private void Awake()
-    {
-        instance = this;
-    }
-    public void UpdateData(Sprite sprite, int[] colorData)
-    {
-        data[sprite] = colorData;
-    }
+    private List<Sprite> sprites = new List<Sprite>();
+    public List<Sprite> Sprites { get { return sprites; } set { sprites = value; } }
 
-    public int[] GetData(Sprite sprite)
-    {
-        if (data.ContainsKey(sprite))
-        {
-            return data[sprite];
-        }
-        Debug.LogWarning("no available data for sprite " + sprite.name);
-        return null;
-    }
+    private List<Marks> spriteMarks = new List<Marks>();
+    public List<Marks> SpriteMarks { get { return spriteMarks; } set { spriteMarks = value; } }
+    //private Dictionary<Sprite, int[]> data = new Dictionary<Sprite, int[]>();
+    //public Dictionary<Sprite, int[]> Data { get { return data; } set { data = value; } }
+}
+
+[System.Serializable]   
+public class Marks
+{
+    public int[] marks;
 }
