@@ -15,6 +15,7 @@ public class TileDataEditor : Editor
 
     public override void OnInspectorGUI()
     {
+        // Drag and drop folder
         tileFolder = (DefaultAsset)EditorGUILayout.ObjectField("Tile Folder", tileFolder, typeof(DefaultAsset), false);
 
         if (tileFolder != null)
@@ -29,13 +30,14 @@ public class TileDataEditor : Editor
         }
 
 
+        // Select folder using file explorer
         if (GUILayout.Button("Browse for tile folder"))
         {
             path = EditorUtility.OpenFolderPanel("Tile Folder", "", "");
             
-            if (path != null && path != "" && path.StartsWith("Resources/"))
+            if (path != null && path != "" && path.StartsWith(Application.dataPath + "/Resources/"))
             {
-                tileFolder = (DefaultAsset)AssetDatabase.LoadAssetAtPath(path, typeof(DefaultAsset));
+                tileFolder = (DefaultAsset)AssetDatabase.LoadAssetAtPath("Assets" + path.Substring(path.LastIndexOf("/Resources")), typeof(DefaultAsset));
             }
             else if (path != null && path != "")
             {
@@ -49,28 +51,51 @@ public class TileDataEditor : Editor
         }
 
     }
-
-    public void GenerateTileData()
+    private List<Sprite> LoadSprites()
     {
-        string[] files = Directory.GetFiles(path);
+        List<Sprite> sprites = new List<Sprite>();
 
-        byte[] fileData;
-        Texture2D tex2D;
-        foreach (string file in files)
+        // If selected folder is in Resources folder use built-in loading 
+        if (path.StartsWith(Application.dataPath + "/Resources/") || path.StartsWith("Assets/Resources/"))
         {
-            if (file.EndsWith(".png") || file.EndsWith(".jpg") || file.EndsWith(".jpeg") || file.EndsWith(".psd"))
+            foreach (Sprite item in Resources.LoadAll<Sprite>(path.Substring(path.LastIndexOf("/Resources") + 11)))
             {
-                fileData = File.ReadAllBytes(file);
-                tex2D = new Texture2D(2, 2);           // Create new "empty" texture
-                if (tex2D.LoadImage(fileData))           // Load the imagedata into the texture (size is set automatically)
+                sprites.Add(item);
+            }
+        }
+        else
+        {
+            // Selected folder is somewhere else, so load images manually
+            string[] files = Directory.GetFiles(path);
+
+            byte[] fileData;
+            Texture2D tex2D;
+            foreach (string file in files)
+            {
+                if (file.EndsWith(".png") || file.EndsWith(".jpg") || file.EndsWith(".jpeg") || file.EndsWith(".psd"))
                 {
-                    Debug.Log("moze");
-                }
-                else
-                {
-                    Debug.Log("ne moze");
+                    fileData = File.ReadAllBytes(file);
+                    tex2D = new Texture2D(2, 2);           
+                    if (tex2D.LoadImage(fileData))           
+                    {
+                        Debug.Log("Image processed! " + file);
+                        Sprite sprite = Sprite.Create(tex2D, new Rect(0, 0, tex2D.width, tex2D.height), new Vector2(0.5f, 0.5f));
+                        sprites.Add(sprite);
+                    }
+                    else
+                    {
+                        Debug.Log("Couldn't process image " + file);
+                    }
                 }
             }
         }
+
+
+        Debug.Log("Loaded: " + sprites.Count + " sprites.");
+        return sprites;
+    }
+    public void GenerateTileData()
+    {
+        LoadSprites();
     }
 }
