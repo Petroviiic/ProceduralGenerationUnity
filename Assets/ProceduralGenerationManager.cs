@@ -24,10 +24,14 @@ public class ProceduralGenerationManager : MonoBehaviour
     private List<CellTile> placedCells = new List<CellTile>();
 
     private List<Sprite> sprites = new List<Sprite>();
+    
+    public TileData tileDataPallete;
+    public Dictionary<Sprite, int[]> marksData = new Dictionary<Sprite, int[]>();
 
-    [SerializeField] private int colorDiversity = 3;
-    private Dictionary<Color, int> colorMapping = new Dictionary<Color, int>();
-    private int colorMappingIndex = 1;
+
+    //[SerializeField] private int colorDiversity = 3;
+    //private Dictionary<Color, int> colorMapping = new Dictionary<Color, int>();
+    //private int colorMappingIndex = 1;
 
     [SerializeField] private float visualizationSpeed = 0.1f;
 
@@ -47,9 +51,13 @@ public class ProceduralGenerationManager : MonoBehaviour
         AdjustFOV();
 
 
-        if (!isReset)
-            LoadSprites(colorDiversity);
-        VisualizePixelsChecked(colorDiversity, new Vector2Int(sprites[0].texture.width, sprites[0].texture.height));
+        //if (!isReset) //mzd ovako da ne moram posebno praviti za loadanje novog tiledatapalleta, a svakako je vec sve preprocesovano
+        if (!LoadData()) { 
+            Debug.LogError("Oops, something went wrong. TileData info is missing!");
+            return;
+        }
+       // print(sprites.Count);
+        //VisualizePixelsChecked(colorDiversity, new Vector2Int(sprites[0].texture.width, sprites[0].texture.height));
 
         foreach (CellTile tile in activeCells)
         {
@@ -58,6 +66,10 @@ public class ProceduralGenerationManager : MonoBehaviour
         }
         activeCells.Clear();
         placedCells.Clear();
+
+
+       // print((tileDataPallete.Data.Count, tileDataPallete.Sprites.Count));
+
 
         cellSize = new Vector2(100 / (float)sprites[0].texture.width, 100 / (float)sprites[0].texture.height);
         int k = 0;
@@ -71,7 +83,7 @@ public class ProceduralGenerationManager : MonoBehaviour
                     GameObject cell = Instantiate(cellPrefab);
                     cell.transform.parent = gridParent;
                                         
-                    cellTile = new CellTile(cell, sprites.GetRange(1, sprites.Count-1));
+                    cellTile = new CellTile(this, cell, sprites.GetRange(1, sprites.Count-1));
                     cellPool.Add(cellTile);
                     
                     gameObjectToCell.Add(cell, cellTile);
@@ -105,139 +117,41 @@ public class ProceduralGenerationManager : MonoBehaviour
         float finalSize = Mathf.Max(sizeByHeight, sizeByWidth) * padding;
         Camera.main.orthographicSize = Mathf.Max(5f, finalSize);
     }
-    private void LoadSprites(int colorDiversity)
+    private bool LoadData()
     {
+        bool isOk = true;
+        if (tileDataPallete.Sprites.Count == 0)
+        {
+            Debug.Log("TileDataPallete.Sprites is empty");
+            isOk = false;
+        }
+        if (tileDataPallete.SpriteMarks.Count == 0)
+        {
+            Debug.Log("TileDataPallete.SpriteMarks is empty");
+            isOk = false;
+        }
+        if (!isOk) return false;
+
         sprites.Clear();
-        //foreach (Sprite item in Resources.LoadAll<Sprite>("Tiles/MyTiles"))
-        //foreach (Sprite item in Resources.LoadAll<Sprite>("Images/circuit"))
-        //foreach (Sprite item in Resources.LoadAll<Sprite>("Images/demo"))
-        //foreach (Sprite item in Resources.LoadAll<Sprite>("Images/polka"))
-        //foreach (Sprite item in Resources.LoadAll<Sprite>("Images/rail"))
-        //foreach (Sprite item in Resources.LoadAll<Sprite>("Images/roads"))
-       // foreach (Sprite item in Resources.LoadAll<Sprite>("Images/mountains"))      //-----------!!!!!!!!!!!!
-        foreach (Sprite item in Resources.LoadAll<Sprite>("Images/circuit-coding-train"))
+        sprites = new List<Sprite>(tileDataPallete.Sprites);
+
+        for (int i = 0; i < sprites.Count; i++)
         {
-            sprites.Add(item);
+            marksData[sprites[i]] = tileDataPallete.SpriteMarks[i].marks;
         }
-        Vector2 spriteSize = sprites[0].rect.size;
 
-        Vector2 offset = spriteSize / (colorDiversity * 2);
-
-        List<Sprite> rotatedSprites = new List<Sprite>();
-        foreach (Sprite sprite in sprites)
-        {
-            int[] marks = ProcessColorMarks(offset, sprite, spriteSize);
-
-            TileData.instance.UpdateData(sprite, marks);
-            
-
-            if (marks[0] == marks[1] && marks[1] == marks[2] && marks[2] == marks[3])
-                continue;
-
-            Color32[] original = sprite.texture.GetPixels32();
-            int size = sprite.texture.width;
-            for (int n = 0; n < 3; n++)
-            {
-                Color32[] rotated = RotateTexture(original, size);
-                
-                Texture2D texture = new Texture2D(size, size, sprite.texture.format, false);
-                texture.filterMode = FilterMode.Point;
-                texture.SetPixels32(rotated);
-                texture.Apply();
-                Sprite rotation = Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f));
-                
-                rotatedSprites.Add(rotation);
-
-                //int splitIndex = 4 - n - 1; 
-                //int[] firstPart = new int[splitIndex];
-                //int[] secondPart = new int[marks.Length - splitIndex];
-                //Array.Copy(marks, 0, firstPart, 0, splitIndex);
-                //Array.Copy(marks, splitIndex, secondPart, 0, secondPart.Length);
-                //int[] rotatedMarks = secondPart.Concat(firstPart).ToArray();
-
-                int[] rotatedMarks = ProcessColorMarks(offset, rotation, spriteSize);
-
-                original = rotated;
-
-                //print(("rotacija "+ n +" "+ rotatedMarks[0] + " " + rotatedMarks[1] + " " + rotatedMarks[2] + " " + rotatedMarks[3]));
-                TileData.instance.UpdateData(rotation, rotatedMarks);  
-            }
-
-        }
-        sprites.AddRange(rotatedSprites);
+        return true;
+        // foreach (Sprite item in Resources.LoadAll<Sprite>("Images/mountains"))      //-----------!!!!!!!!!!!!
     }
-
-    private int[] ProcessColorMarks(Vector2 offset, Sprite sprite, Vector2 spriteSize)
+    public int[] GetData(Sprite sprite)
     {
-        int[] marks = new int[4];
-        string[] marksString = new string[4];
-        int x = 0, y = 0;
-        for (int side = 0; side < 4; side++)    // origin corner: bottom-left;  directions : up, right, down, left
+        if (marksData.ContainsKey(sprite))
         {
-            for (int i = 0; i < colorDiversity; i++)
-            {
-                // int step = (side == 0 || side == 1) ? i : (colorDiversity - 1 - i);
-                int step = (side == 0 || side == 1) ? i : i;
-
-                if (side == 0) //bottom - top
-                {
-                    y = (int)(offset.y + step * spriteSize.y / colorDiversity);
-                    x = (int)(offset.y);
-                }
-                else if (side == 1) //left - right
-                {
-                    x = (int)(offset.x + step * spriteSize.x / colorDiversity);
-                    y = (int)(offset.y + (colorDiversity - 1) * spriteSize.y / colorDiversity);
-                }
-                else if (side == 2) //top - bot
-                {
-                    y = (int)(offset.y + step * spriteSize.y / colorDiversity);
-                    x = (int)(offset.x + (colorDiversity - 1) * spriteSize.x / colorDiversity);
-                }
-                else if (side == 3) //right - left
-                {
-                    x = (int)(offset.x + step * spriteSize.x / colorDiversity);
-                    y = (int)(offset.y);
-                }
-                Color32 color = sprite.texture.GetPixel(x, y);
-                color.r = (byte)((color.r / 8) * 8);
-                color.g = (byte)((color.g / 8) * 8);
-                color.b = (byte)((color.b / 8) * 8);
-                if (!colorMapping.ContainsKey(color))
-                {
-                    colorMapping[color] = colorMappingIndex++;
-                }
-                marks[side] = (int)(marks[side] * 31 + colorMapping[color]) % 1000000;
-                marksString[side] += colorMapping[color];
-
-            }
+            return marksData[sprite];
         }
-        //print((sprite.name + ": " + marks[0] + " " + marks[1] + " " + marks[2] + " " + marks[3]));
-        print((sprite.name + ": " + marksString[0] + " " + marksString[1] + " " + marksString[2] + " " + marksString[3]));
-        return marks;
+        Debug.LogWarning("no available data for sprite " + sprite.name);
+        return null;
     }
-
-
-
-
-
-
-    private Color32[] RotateTexture(Color32[] original, int size)
-    {
-        //rotates clockwise
-        Color32[] ret = new Color32[size * size];
-
-        for (int j = 0; j < size; j++)
-        {
-            for (int i = 0; i < size; i++)
-            {
-                ret[(i + 1) * size - j - 1] = original[original.Length - 1 - (j * size + i)];
-            }
-        }
-
-        return ret;
-    }
-
     private void Update()
     {
         if (Input.GetKeyDown(KeyCode.Space))        //inits grid only
@@ -391,66 +305,7 @@ public class ProceduralGenerationManager : MonoBehaviour
         placedCells = new List<CellTile>(state.placedTilesSnapshot);
     }
 
-    /*
-    private IEnumerator GenerateMap(bool isTestEnv = false)
-    {
-        isRunning = true;
 
-        int placed = 0;
-        Vector2Int coords = new Vector2Int(Random.Range(0, rows), Random.Range(0, columns));    //starting coords
-
-        for (placed = 0; placed < columns * rows; placed++)     //ovdje mogu staviti while  coords.x>=0 && cords.y >= 0, al aj
-        {
-            if (isTestEnv)
-                yield return null;
-            else
-                yield return new WaitForSeconds(visualizationSpeed);
-            //while (!goNext)
-            //{
-            //    yield return null;
-            //}
-            goNext = false;
-            if (!PlaceTile(coords))
-            {
-                Debug.Log("Error placing a tile");
-               
-                 
-                  u Pile pri inicijalizaciji da shufluje options, pa da imam tamo u options zapravo random, 
-                  a ne da ih biram random po indeksu
-                  
-                 optionIndex = 0        //da za pocetak uzme prvi option, koji ce biti random
-                 while (!PlaceTile(coords, optionIndex)){
-                    placed--
-                    pile = stashedPlacedPiles.Pop()
-                    pile.resetPile()
-                        
-                    optionIndex++;
-                    
-                    //  ako su ispucane sve opcije za taj pile:
-                    //  sad ne znam, da li onda treba ispisati gresku u fullu, ili pokusati backtrackovati i coords
-                    //  jer ako ode na lokaciju sa npr drugom najmanjom entropijom, onda bi ova trenutna lokacija svakako mogla biti 
-                    //  nepopunjena? mzd? ili pricam gluposti. imam cini mi se dvije opcije:
-                    //  da se vrati na prosli postavljeni tile, pa da za njega poveca optionindex, i uzme sljedeci koji je dostupan,
-                    //  pa ce se potencijalno uklopiti i ovaj; ili da se ne mijenja optionIndex, nego da se nadje mjesto sa n-tom najmanjom entropijom
-                    //  ce vidimo
-                    if optionIndex >= pile.options.Count    {        
-                                
-                        break;
-                    }
-                    Debug.Log("Inverting options")
-                 } 
-                break;
-            }
-            coords = FindNext();
-            if (coords.x < 0 || coords.y < 0)
-            {
-                Debug.LogError("Greska, koordinate ne mogu biti negativne");
-                break;
-            }
-        }
-        isRunning = false;
-    }
-     */
     private Vector2Int FindNext()
     {   
         int leastEntrophy = int.MaxValue;
