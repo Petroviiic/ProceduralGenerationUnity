@@ -6,6 +6,8 @@ using UnityEngine;
 
 public class CellTile
 {
+    private ProceduralGenerationManager generationManager;
+    
     public GameObject selfObject { get; private set; }
     public BoxCollider2D selfCollider { get; private set; }
     private SpriteRenderer spriteRenderer;
@@ -15,8 +17,10 @@ public class CellTile
     public bool isPlaced = false;
 
     public int spriteSelection { get; private set; }
-    public CellTile(GameObject cell, List<Sprite> options)
+    public CellTile(ProceduralGenerationManager _generationManager, GameObject cell, List<Sprite> options)
     {
+        generationManager = _generationManager;
+
         selfObject = cell;
         selfCollider = selfObject.GetComponent<BoxCollider2D>();
        
@@ -49,7 +53,7 @@ public class CellTile
     }
     public void UpdateSprite(Sprite sprite)
     {
-        selfCollider.size =  new Vector2(sprite.texture.width / 100, sprite.texture.height / 100);
+        selfCollider.size = new Vector2((float)sprite.texture.width / 100, (float)sprite.texture.height / 100);
         spriteRenderer.sprite = sprite;
     }
     public int[] Place(Vector2Int coords)
@@ -63,7 +67,7 @@ public class CellTile
         isPlaced = true;
         UpdateSprite(options[options.Count - 1]);
 
-        int[] marks = TileData.instance.GetData(options[options.Count - 1]);
+        int[] marks = generationManager.GetData(options[options.Count - 1]);
         return marks;
     }
     public void ResetCell(Sprite defaultSprite, int spriteSelection)
@@ -99,7 +103,7 @@ public class CellTile
         List<Sprite> toRemove = new List<Sprite>();
         for(int i = 0; i < options.Count; i++)
         {
-            int[] marks = TileData.instance.GetData(options[i]);
+            int[] marks = generationManager.GetData(options[i]);
             if (side == 0)      //origin:left - this : right
             {
                 if (origin != marks[2])
