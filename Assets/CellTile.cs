@@ -60,7 +60,7 @@ public class CellTile
     {
         if (options.Count <= 0)
         {
-            Debug.LogWarning("No available options " + options.Count + " " + spriteSelection);
+            Debug.Log("No available options " + options.Count + " " + spriteSelection);
             return null;
         }
         coordinates = coords;
