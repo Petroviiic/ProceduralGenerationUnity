@@ -116,12 +116,12 @@ public class ProceduralGenerationManager : MonoBehaviour
     private bool LoadData()
     {
         bool isOk = true;
-        if (tileDataPallete.Sprites.Count == 0)
+        if (tileDataPallete.sprites.Count == 0)
         {
             Debug.Log("TileDataPallete.Sprites is empty");
             isOk = false;
         }
-        if (tileDataPallete.SpriteMarks.Count == 0)
+        if (tileDataPallete.spriteMarks.Count == 0)
         {
             Debug.Log("TileDataPallete.SpriteMarks is empty");
             isOk = false;
@@ -129,11 +129,11 @@ public class ProceduralGenerationManager : MonoBehaviour
         if (!isOk) return false;
 
         sprites.Clear();
-        sprites = new List<Sprite>(tileDataPallete.Sprites);
+        sprites = new List<Sprite>(tileDataPallete.sprites);
 
         for (int i = 0; i < sprites.Count; i++)
         {
-            marksData[sprites[i]] = tileDataPallete.SpriteMarks[i].marks;
+            marksData[sprites[i]] = tileDataPallete.spriteMarks[i].marks;
         }
 
         return true;
