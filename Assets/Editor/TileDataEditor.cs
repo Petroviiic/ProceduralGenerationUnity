@@ -40,7 +40,7 @@ public class TileDataEditor : Editor
 
 
         // Select folder using file explorer
-        if (GUILayout.Button("Browse for tile folder"))
+        if (GUILayout.Button("Select Tile Folder"))
         {
             path = EditorUtility.OpenFolderPanel("Tile Folder", "", "");
             
@@ -54,7 +54,7 @@ public class TileDataEditor : Editor
             }
         }
 
-        if (GUILayout.Button("Generate tile data"))
+        if (GUILayout.Button("Generate Tile Data"))
         {
             if (path != null && path != "")
             {
@@ -74,9 +74,8 @@ public class TileDataEditor : Editor
     {
         List<Sprite> sprites = new List<Sprite>();
         // If selected folder is in Resources folder use built-in loading 
-        //if (path.StartsWith(Application.dataPath + "/Resources/") || path.StartsWith("Assets/Resources/"))
-        if (false)
-            {
+        if (path.StartsWith(Application.dataPath + "/Resources/") || path.StartsWith("Assets/Resources/"))
+        {
             foreach (Sprite item in Resources.LoadAll<Sprite>(path.Substring(path.LastIndexOf("/Resources") + 11)))
             {
                 sprites.Add(item);
@@ -97,6 +96,10 @@ public class TileDataEditor : Editor
                     tex2D = new Texture2D(2, 2);           
                     if (tex2D.LoadImage(fileData))           
                     {
+                        tex2D.wrapMode = TextureWrapMode.Clamp;
+                        tex2D.filterMode = FilterMode.Point;
+                        tex2D.Apply();
+
                         Debug.Log("Image processed! " + file);
                         Sprite sprite = Sprite.Create(tex2D, new Rect(0, 0, tex2D.width, tex2D.height), new Vector2(0.5f, 0.5f));
                         sprite.name = file;
@@ -117,44 +120,33 @@ public class TileDataEditor : Editor
         return sprites;
     }
 
-    private void DeleteAssets()
+    private void DeleteSubAssets()
     {
-        AssetDatabase.StartAssetEditing();
-        try
-        {
-            string[] guids = AssetDatabase.FindAssets("t:" + tileData);
-            int deletedCount = 0;
+        if (tileData == null) return;
 
-            foreach (string guid in guids)
+        string path = AssetDatabase.GetAssetPath(tileData);
+        Object[] allAssets = AssetDatabase.LoadAllAssetsAtPath(path);
+
+        foreach (Object asset in allAssets)
+        {
+            if (AssetDatabase.IsMainAsset(asset))
+                continue;
+
+            if (asset is Sprite || asset is Texture2D)
             {
-                string path = AssetDatabase.GUIDToAssetPath(guid);
-                if (!string.IsNullOrEmpty(path))
-                {
-                    // Delete the asset file at the path
-                    if (AssetDatabase.DeleteAsset(path))
-                    {
-                        deletedCount++;
-                        Debug.Log("Deleted asset: " + path);
-                    }
-                    else
-                    {
-                        Debug.LogError("Could not delete asset: " + path);
-                    }
-                }
+                AssetDatabase.RemoveObjectFromAsset(asset);
+                Object.DestroyImmediate(asset, true);
             }
+        }
 
-            Debug.Log(deletedCount + " assets of type " + tileData + " deleted.");
-        }
-        finally
-        {
-            AssetDatabase.StopAssetEditing();
-            AssetDatabase.Refresh();
-        }
+
+        EditorUtility.SetDirty(tileData);
+        AssetDatabase.SaveAssets();
+        AssetDatabase.Refresh();
     }
-
     public void GenerateTileData()
     {
-        DeleteAssets();
+        DeleteSubAssets();
 
         tileData.Sprites.Clear();
         tileData.SpriteMarks.Clear();
@@ -193,8 +185,10 @@ public class TileDataEditor : Editor
 
                 Texture2D texture = new Texture2D(size, size, sprite.texture.format, false);
                 texture.filterMode = FilterMode.Point;
+                texture.wrapMode = TextureWrapMode.Clamp;
                 texture.SetPixels32(rotated);
                 texture.Apply();
+
                 Sprite rotation = Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f));
                 rotation.name = sprite.name + "rotation_" + ((n + 1) * 90).ToString();
 
@@ -213,8 +207,6 @@ public class TileDataEditor : Editor
         sprites.AddRange(rotatedSprites);
         spriteMarks.AddRange(rotatatedMarksList);
 
-        //hideFlags = HideFlags.HideAndDontSave;
-
         tileData.SpriteMarks = new List<Marks>(spriteMarks);
         tileData.Sprites = new List<Sprite>(sprites);
 
@@ -231,32 +223,26 @@ public class TileDataEditor : Editor
         int x = 0, y = 0;
         for (int side = 0; side < 4; side++)    // origin corner: bottom-left;  directions : up, right, down, left
         {
-
-
-            //TODO - for (int step = 0; step < tileData.colorDiversity; step++)   ali kad popravis sve ostalo
             for (int i = 0; i < tileData.colorDiversity; i++)
             {
-                // int step = (side == 0 || side == 1) ? i : (colorDiversity - 1 - i);
-                int step = (side == 0 || side == 1) ? i : i;
-
                 if (side == 0) //bottom - top
                 {
-                    y = (int)(offset.y + step * spriteSize.y / tileData.colorDiversity);
+                    y = (int)(offset.y + i * spriteSize.y / tileData.colorDiversity);
                     x = (int)(offset.y);
                 }
                 else if (side == 1) //left - right
                 {
-                    x = (int)(offset.x + step * spriteSize.x / tileData.colorDiversity);
+                    x = (int)(offset.x + i * spriteSize.x / tileData.colorDiversity);
                     y = (int)(offset.y + (tileData.colorDiversity - 1) * spriteSize.y / tileData.colorDiversity);
                 }
                 else if (side == 2) //top - bot
                 {
-                    y = (int)(offset.y + step * spriteSize.y / tileData.colorDiversity);
+                    y = (int)(offset.y + i * spriteSize.y / tileData.colorDiversity);
                     x = (int)(offset.x + (tileData.colorDiversity - 1) * spriteSize.x / tileData.colorDiversity);
                 }
                 else if (side == 3) //right - left
                 {
-                    x = (int)(offset.x + step * spriteSize.x / tileData.colorDiversity);
+                    x = (int)(offset.x + i * spriteSize.x / tileData.colorDiversity);
                     y = (int)(offset.y);
                 }
                 Color32 color = sprite.texture.GetPixel(x, y);
