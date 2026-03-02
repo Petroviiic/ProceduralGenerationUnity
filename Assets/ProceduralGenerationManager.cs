@@ -56,7 +56,6 @@ public class ProceduralGenerationManager : MonoBehaviour
             Debug.LogError("Oops, something went wrong. TileData info is missing!");
             return;
         }
-       // print(sprites.Count);
         //VisualizePixelsChecked(colorDiversity, new Vector2Int(sprites[0].texture.width, sprites[0].texture.height));
 
         foreach (CellTile tile in activeCells)
@@ -67,11 +66,8 @@ public class ProceduralGenerationManager : MonoBehaviour
         activeCells.Clear();
         placedCells.Clear();
 
-
-       // print((tileDataPallete.Data.Count, tileDataPallete.Sprites.Count));
-
-
         cellSize = new Vector2(100 / (float)sprites[0].texture.width, 100 / (float)sprites[0].texture.height);
+
         int k = 0;
         for (int j = 0; j < rows; j++)
         {
@@ -88,12 +84,12 @@ public class ProceduralGenerationManager : MonoBehaviour
                     
                     gameObjectToCell.Add(cell, cellTile);
                     
-                    cell.transform.localScale = cellSize;
                 }
 
                 cellTile = cellPool[k];
                 cellTile.selfObject.SetActive(true);
                 cellTile.selfObject.transform.localPosition = gridOffset + new Vector2(i, -j);
+                cellTile.selfObject.transform.localScale = cellSize;
 
                 cellTile.UpdateSprite(sprites[0]);
                 cellTile.SetOptions(sprites.GetRange(1, sprites.Count - 1));
