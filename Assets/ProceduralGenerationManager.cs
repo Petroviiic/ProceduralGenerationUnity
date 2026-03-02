@@ -172,59 +172,33 @@ public class ProceduralGenerationManager : MonoBehaviour
         Stack<MapState> history = new Stack<MapState>();
         while (placed < columns * rows)
         {
-            Debug.Log(("Trying coordinates: ", coords));
-            bool shouldContinue = false;
-            if (coords.x < 0 || coords.y < 0)
-            {
-                if (history.Count == 0)
-                {
-                    Debug.LogError("History stack is empty");
-                    break;
-                }
-                placed--;
-                MapState lastState = history.Pop();
-                RestoreState(lastState);
 
-                coords = lastState.currentTilePos;
-                shouldContinue = true;
+            Debug.Log(("Trying coordinates: ", coords));
+            Dictionary<int, List<Sprite>> options = (coords.x >= 0 && coords.y >= 0) ? PlaceTile(coords) : null;
+            
+            if (options != null)
+            {
+                history.Push(new MapState
+                {
+                    currentSpriteIndex = activeCells[coords.y + coords.x * columns].spriteSelection,
+                    optionsSnapshot = options,
+                    currentTilePos = coords,
+                    placedTilesSnapshot = new List<CellTile>(placedCells.GetRange(0, placedCells.Count - 1))
+                });
+                placed++;
+                coords = FindNext();
             }
             else
             {
-                Dictionary<int, List<Sprite>> options = PlaceTile(coords);
-                if (options != null)
-                {
-                    history.Push(new MapState
-                    {
-                        currentSpriteIndex = activeCells[coords.y + coords.x * columns].spriteSelection,
-                        optionsSnapshot = options,
-                        currentTilePos = coords,
-                        placedTilesSnapshot = new List<CellTile>(placedCells.GetRange(0, placedCells.Count - 1))
-                    });
-                    placed++;
-                }
-                else
-                {
-                    // No available options
-                    if (history.Count == 0)
-                    {
-                        Debug.LogError("History stack is empty");
-                        break;
-                    }
-                    Debug.Log("Backtracking...");
-                    
-                    placed--;
-                    MapState lastState = history.Pop();
-                    RestoreState(lastState);
-                    
-                    coords = lastState.currentTilePos;
-                    shouldContinue = true;
-                }
+                Debug.Log("Backtracking...");
+                if (!TryBacktrack(history, out coords)) 
+                    break;
+                placed--;
             }
+            
 
 
             Debug.Log(("History stack count: ", history.Count));
-            if (!shouldContinue)
-                coords = FindNext();
             if (!stepByStep)
             {
                 if (isTestEnv)
@@ -244,6 +218,22 @@ public class ProceduralGenerationManager : MonoBehaviour
         }
         isRunning = false;
     }
+
+    private bool TryBacktrack(Stack<MapState> history, out Vector2Int newCoords)
+    {
+        newCoords = new Vector2Int(-1, -1);
+        if (history.Count == 0)
+        {
+            Debug.LogError("History stack is empty - Generation Failed");
+            return false;
+        }
+
+        MapState lastState = history.Pop();
+        RestoreState(lastState);
+        newCoords = lastState.currentTilePos;
+        return true;
+    }
+
     private void RestoreState(MapState state)
     {
         foreach (int index in state.optionsSnapshot.Keys)
