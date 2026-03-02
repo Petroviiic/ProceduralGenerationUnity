@@ -13,8 +13,12 @@ public class ProceduralGenerationManager : MonoBehaviour
     [SerializeField] private Transform gridParent;
     [SerializeField] private GameObject cellPrefab;
 
-    [SerializeField] private int rows = 3;
-    [SerializeField] private int columns = 4;
+    // Using rows and newrows to prevent errors if these are edited mid-generation
+    private int rows;
+    private int columns;
+    [SerializeField, Range(1, 200)] private int newRows = 3;
+    [SerializeField, Range(1, 200)] private int newColumns = 4;
+
     [SerializeField] private Vector2 gridOffset;
     private Vector2 cellSize = new Vector2(1, 1);
 
@@ -42,18 +46,16 @@ public class ProceduralGenerationManager : MonoBehaviour
         new Vector2Int(0, 1),
         new Vector2Int(1, 0),
     };
-    private bool goNext = false;        //used for stepbystep iteration
-    private bool isRunning = false;     //is generation currently in progress
-    private bool isReset = false;     
+    [HideInInspector] public bool goNext = false;        //used for stepbystep iteration
+    [HideInInspector] public bool isRunning = false;     //is generation currently in progress
 
-    public void Setup(bool isReset)
+    public void Setup()
     {
         AdjustFOV();
 
 
-        //if (!isReset) //mzd ovako da ne moram posebno praviti za loadanje novog tiledatapalleta, a svakako je vec sve preprocesovano
         if (!LoadData()) { 
-            Debug.LogError("Oops, something went wrong. TileData info is missing!");
+            Debug.LogError("Something went wrong. TileData info is missing!");
             return;
         }
         //VisualizePixelsChecked(colorDiversity, new Vector2Int(sprites[0].texture.width, sprites[0].texture.height));
@@ -68,10 +70,13 @@ public class ProceduralGenerationManager : MonoBehaviour
 
         cellSize = new Vector2(100 / (float)sprites[0].texture.width, 100 / (float)sprites[0].texture.height);
 
+        columns = newColumns;
+        rows = newRows;
+
         int k = 0;
-        for (int j = 0; j < rows; j++)
+        for (int j = 0; j < newRows; j++)
         {
-            for (int i = 0; i < columns; i++)
+            for (int i = 0; i < newColumns; i++)
             {
                 CellTile cellTile = null;
                 if (k >= cellPool.Count)
@@ -102,13 +107,13 @@ public class ProceduralGenerationManager : MonoBehaviour
     private void AdjustFOV()
     {
         Vector3 gridPosition = Camera.main.ScreenToWorldPoint(new Vector3(Screen.width / 2, Screen.height / 2, 10));
-        gridPosition += new Vector3(-1 * (columns - 1) / 2, 1 * (rows - 1) / 2);
+        gridPosition += new Vector3(-1 * (newColumns - 1) / 2, 1 * (newRows - 1) / 2);
         gridParent.localPosition = gridPosition;
 
         float aspectRatio = (float)Screen.width / (float)Screen.height;
 
-        float sizeByHeight = rows * 1 / 2f;
-        float sizeByWidth = (columns * 1 / 2f) / aspectRatio;
+        float sizeByHeight = newRows * 1 / 2f;
+        float sizeByWidth = (newColumns * 1 / 2f) / aspectRatio;
         float padding = 1.1f;
         float finalSize = Mathf.Max(sizeByHeight, sizeByWidth) * padding;
         Camera.main.orthographicSize = Mathf.Max(5f, finalSize);
@@ -145,59 +150,9 @@ public class ProceduralGenerationManager : MonoBehaviour
         {
             return marksData[sprite];
         }
-        Debug.LogWarning("no available data for sprite " + sprite.name);
+        Debug.LogWarning("No available data for sprite " + sprite.name);
         return null;
     }
-    private void Update()
-    {
-        if (Input.GetKeyDown(KeyCode.Space))        //inits grid only
-        {
-            isRunning = false;
-            Setup(isReset);     
-        }
-
-        if (Input.GetKeyDown(KeyCode.G))            //starts single generation process
-        {
-            isRunning = false;
-            Setup(true);
-            StartCoroutine(GenerateMapWithBacktracking());
-        }
-
-        if (Input.GetKeyDown(KeyCode.T))            //starts N generation processes for testing purposes
-        {
-            isRunning = false;
-            Setup(true);
-            StartCoroutine(TestGeneration(20));
-        }
-        if (Input.GetKeyDown(KeyCode.F))            //used for step by step generation
-        {
-            if (!isRunning)
-            {
-                StartCoroutine(GenerateMapWithBacktracking(stepByStep : true));
-                return;
-            }
-            goNext = true;
-        }
-
-        if (Input.GetKeyDown(KeyCode.R))           //safety check, resets the scene
-        {
-            SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
-        }
-    }
-
-    private IEnumerator TestGeneration(int num)
-    {
-        for (int i = 0; i < num; i++)
-        {
-            while(isRunning)
-            {
-                yield return null;
-            }
-            Setup(true);
-            StartCoroutine(GenerateMapWithBacktracking(isTestEnv: true));
-        }
-    }
-
 
     struct MapState
     {
@@ -206,7 +161,7 @@ public class ProceduralGenerationManager : MonoBehaviour
         public Dictionary<int, List<Sprite>> optionsSnapshot;       //cellindex, options
         public List<CellTile> placedTilesSnapshot;
     }
-    private IEnumerator GenerateMapWithBacktracking(bool isTestEnv = false, bool stepByStep = false)
+    public IEnumerator GenerateMapWithBacktracking(bool isTestEnv = false, bool stepByStep = false)
     {
         isRunning = true;
         goNext = false;
@@ -217,7 +172,7 @@ public class ProceduralGenerationManager : MonoBehaviour
         Stack<MapState> history = new Stack<MapState>();
         while (placed < columns * rows)
         {
-            print(coords);
+            Debug.Log(("Trying coordinates: ", coords));
             bool shouldContinue = false;
             if (coords.x < 0 || coords.y < 0)
             {
@@ -229,7 +184,6 @@ public class ProceduralGenerationManager : MonoBehaviour
                 placed--;
                 MapState lastState = history.Pop();
                 RestoreState(lastState);
-                Debug.LogError("Greska, koordinate ne mogu biti negativne");
 
                 coords = lastState.currentTilePos;
                 shouldContinue = true;
@@ -250,13 +204,14 @@ public class ProceduralGenerationManager : MonoBehaviour
                 }
                 else
                 {
-                    //no available options
+                    // No available options
                     if (history.Count == 0)
                     {
                         Debug.LogError("History stack is empty");
                         break;
                     }
-                    print("backtracking...");
+                    Debug.Log("Backtracking...");
+                    
                     placed--;
                     MapState lastState = history.Pop();
                     RestoreState(lastState);
@@ -267,7 +222,7 @@ public class ProceduralGenerationManager : MonoBehaviour
             }
 
 
-            print(history.Count);
+            Debug.Log(("History stack count: ", history.Count));
             if (!shouldContinue)
                 coords = FindNext();
             if (!stepByStep)
@@ -323,10 +278,12 @@ public class ProceduralGenerationManager : MonoBehaviour
             foreach (Vector2Int direction in directions)
             {
                 Vector2Int coordsToCheck = coords + direction;
-                int posToCheck = coordsToCheck.y + coordsToCheck.x * columns;   //coords to list index
+                int posToCheck = coordsToCheck.y + coordsToCheck.x * columns;   // Coords to list index
+                
                 if (coordsToCheck.y < 0 || coordsToCheck.x < 0 || coordsToCheck.y >= columns || coordsToCheck.x >= rows)
                     continue;
                 neigborsCount++;
+
                 CellTile neighbor = activeCells[posToCheck];
 
                 int optionsCount = neighbor.GetOptionsCount();
@@ -351,7 +308,7 @@ public class ProceduralGenerationManager : MonoBehaviour
             }
             i++;
         }        
-        if (leastEntrophy == 0) //backtrack immediatelly
+        if (leastEntrophy == 0) // Backtrack immediately
             return new Vector2Int(-1, -1);
         return coordinates;
     }
@@ -361,14 +318,16 @@ public class ProceduralGenerationManager : MonoBehaviour
 
         Dictionary<int, List<Sprite>> optionsSnapshot = new Dictionary<int, List<Sprite>>();
         optionsSnapshot[pos.y + pos.x * columns] = new List<Sprite>(activeCells[pos.y + pos.x * columns].GetOptions());
+
         int[] tileMarks = toPlace.Place(new Vector2Int(pos.x, pos.y));
+
         if (tileMarks == null)
         {
-            print("tilemarks empty");
+            Debug.Log("Tilemarks empty!");
             return null;
         }
 
-        print(("Postavio na : ", pos, " tj indeks: ", pos.y + pos.x * columns));
+        Debug.Log(("Tile placed at: ", pos));
 
         for (int i = 0; i < directions.Length; i++)     //check left, up, right, down, as sorted in tileMarks
         {
@@ -380,10 +339,7 @@ public class ProceduralGenerationManager : MonoBehaviour
 
             int index = y + x * columns;
             optionsSnapshot[index] = new List<Sprite>(activeCells[index].GetOptions()); 
-            activeCells[index].CheckCompatibility(tileMarks[i], i); //ovdje ce biti greska sa indeksom
-
-
-            //neka return null ako neki od komsija ima optionscount == 0
+            activeCells[index].CheckCompatibility(tileMarks[i], i); 
         }
         placedCells.Add(toPlace);
         return optionsSnapshot;
