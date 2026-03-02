@@ -247,6 +247,7 @@ GameObject:
   m_Component:
   - component: {fileID: 429365954}
   - component: {fileID: 429365953}
+  - component: {fileID: 429365955}
   m_Layer: 0
   m_Name: Manager
   m_TagString: Untagged
@@ -268,11 +269,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   gridParent: {fileID: 1438117646}
   cellPrefab: {fileID: 3803005135731344120, guid: ca6b4de385fbdb84285f3ced5de91d50, type: 3}
-  rows: 20
-  columns: 20
+  newRows: 5
+  newColumns: 5
   gridOffset: {x: 0, y: 0}
   tileDataPallete: {fileID: 11400000, guid: 3502f5367ed1996458a7923391d1d190, type: 2}
   visualizationSpeed: 0.01
+  goNext: 0
+  isRunning: 0
 --- !u!4 &429365954
 Transform:
   m_ObjectHideFlags: 0
@@ -288,6 +291,19 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &429365955
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 429365952}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 418855a786b51274bba2f9f6ab46e0da, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  generationManager: {fileID: 429365953}
 --- !u!1 &519420028
 GameObject:
   m_ObjectHideFlags: 0
