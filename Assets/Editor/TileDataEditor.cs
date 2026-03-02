@@ -12,7 +12,7 @@ public class TileDataEditor : Editor
 {
     private TileData tileData => target as TileData;
     
-    private DefaultAsset tileFolder;
+    [SerializeField] private DefaultAsset tileFolder;
     private string path;
 
 
@@ -23,6 +23,7 @@ public class TileDataEditor : Editor
     {
         DrawDefaultInspector();
 
+        EditorGUILayout.Space(15);
 
         // Drag and drop folder
         tileFolder = (DefaultAsset)EditorGUILayout.ObjectField("Tile Folder", tileFolder, typeof(DefaultAsset), false);
@@ -37,7 +38,6 @@ public class TileDataEditor : Editor
                 path = string.Empty;
             }
         }
-
 
         // Select folder using file explorer
         if (GUILayout.Button("Select Tile Folder"))
@@ -54,6 +54,8 @@ public class TileDataEditor : Editor
             }
         }
 
+        EditorGUILayout.Space(10);
+
         if (GUILayout.Button("Generate Tile Data"))
         {
             if (path != null && path != "")
@@ -69,6 +71,9 @@ public class TileDataEditor : Editor
                 Debug.Log("Image root folder is not defined!");
         }
 
+        EditorGUILayout.Space();
+        EditorGUILayout.Space();
+        EditorGUILayout.HelpBox("Supported formats: PNG, JPG, JPEG. For PSD files, the folder must be located within Resources. Drag & drop a project folder or use 'Select Tile Folder' to browse.", MessageType.Info);
     }
     private List<Sprite> LoadSprites()
     {
@@ -126,11 +131,11 @@ public class TileDataEditor : Editor
 
         string path = AssetDatabase.GetAssetPath(tileData);
         Object[] allAssets = AssetDatabase.LoadAllAssetsAtPath(path);
-
         foreach (Object asset in allAssets)
         {
-            if (AssetDatabase.IsMainAsset(asset))
-                continue;
+            if (AssetDatabase.IsMainAsset(asset)) continue;
+            if (AssetDatabase.GetAssetPath(asset) != path) continue;
+
 
             if (asset is Sprite || asset is Texture2D)
             {
@@ -147,9 +152,9 @@ public class TileDataEditor : Editor
     public void GenerateTileData()
     {
         DeleteSubAssets();
-
-        tileData.Sprites.Clear();
-        tileData.SpriteMarks.Clear();
+        
+        tileData.sprites.Clear();
+        tileData.spriteMarks.Clear();
 
         List<Sprite> sprites = LoadSprites();
         if (sprites.Count == 0)
@@ -207,13 +212,11 @@ public class TileDataEditor : Editor
         sprites.AddRange(rotatedSprites);
         spriteMarks.AddRange(rotatatedMarksList);
 
-        tileData.SpriteMarks = new List<Marks>(spriteMarks);
-        tileData.Sprites = new List<Sprite>(sprites);
+        tileData.spriteMarks = new List<Marks>(spriteMarks);
+        tileData.sprites = new List<Sprite>(sprites);
 
         EditorUtility.SetDirty(tileData);
         AssetDatabase.SaveAssets();
-
-        Debug.Log(tileData.SpriteMarks.Count);
     }
 
     private int[] ProcessColorMarks(Vector2 offset, Sprite sprite, Vector2 spriteSize)
