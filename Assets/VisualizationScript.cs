@@ -10,14 +10,14 @@ using UnityEngine.UI;
 public class VisualizationScript : MonoBehaviour
 {
     [SerializeField] private ProceduralGenerationManager manager;
-    [SerializeField] private Image showImage;
+    [SerializeField] private Image candidatePreviewImage;
     private CellTile lastSelectedTile;
     private int spriteIndex;
 
     private Sprite defaultSprite;
     private void Start()
     {
-        showImage.sprite = null;
+        candidatePreviewImage.sprite = null;
     }
     private void Update()
     {
@@ -89,7 +89,7 @@ public class VisualizationScript : MonoBehaviour
     {
         if (cell == null) 
         {
-            showImage.sprite = defaultSprite;
+            candidatePreviewImage.sprite = defaultSprite;
             return;
         }
         if (cell.GetOptionsCount()==0)
@@ -97,6 +97,6 @@ public class VisualizationScript : MonoBehaviour
             return;
         }
         spriteIndex = spriteIndex % cell.GetOptionsCount();
-        showImage.sprite = cell.GetOptions()[spriteIndex];
+        candidatePreviewImage.sprite = cell.GetOptions()[spriteIndex];
     }
 }
