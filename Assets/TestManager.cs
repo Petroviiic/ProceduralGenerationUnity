@@ -46,7 +46,7 @@ public class TestManager : MonoBehaviour
         {
             StartGeneration(GenerationType.StepByStepGeneration);
         }
-        if (Input.GetKeyDown(KeyCode.V))            //used for step by step generation
+        if (Input.GetKeyDown(KeyCode.V))            //shows which pixels are used for sampling
         {
             VisualizePixelsChecked();
         }
@@ -56,6 +56,26 @@ public class TestManager : MonoBehaviour
         {
             SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
         }
+    }
+    public void InitGrid()
+    {
+        StartGeneration(GenerationType.InitGridOnly);
+    }
+    public void SingleGeneration()
+    {
+        StartGeneration(GenerationType.SingleGeneration);
+    }
+    public void MultipleGeneration()
+    {
+        StartGeneration(GenerationType.MultipleGenerations);
+    }
+    public void StepByStepGeneration()
+    {
+        StartGeneration(GenerationType.StepByStepGeneration);
+    }
+    public void ResetScene()
+    {
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
     private void StartGeneration(GenerationType type)
@@ -118,7 +138,7 @@ public class TestManager : MonoBehaviour
 
 
 
-    private void VisualizePixelsChecked()
+    public void VisualizePixelsChecked()
     {
         if (generationManager.tileDataPalette == null)
         {

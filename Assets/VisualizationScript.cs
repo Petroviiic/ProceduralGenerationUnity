@@ -14,10 +14,9 @@ public class VisualizationScript : MonoBehaviour
     private CellTile lastSelectedTile;
     private int spriteIndex;
 
-    private Sprite defaultSprite;
     private void Start()
     {
-        candidatePreviewImage.sprite = null;
+        candidatePreviewImage.gameObject.SetActive(false);
     }
     private void Update()
     {
@@ -55,10 +54,10 @@ public class VisualizationScript : MonoBehaviour
                 DrawCellDetails(null);
             }
         }
+
+
     }
 
-    //ovo ce raditi samo ako je ukljucen ondrawgizmos, pa onda ili napravi da onaj visualizationsprite nestane kad gizmos nisu ukljuceni
-    //ili napravi da ne zavisi od gizmosa uopste
     private void OnDrawGizmos()
     {
         foreach (var cell in manager.activeCells)
@@ -89,13 +88,14 @@ public class VisualizationScript : MonoBehaviour
     {
         if (cell == null) 
         {
-            candidatePreviewImage.sprite = defaultSprite;
+            candidatePreviewImage.gameObject.SetActive(false);
             return;
         }
         if (cell.GetOptionsCount()==0)
         {
             return;
         }
+        candidatePreviewImage.gameObject.SetActive(true);
         spriteIndex = spriteIndex % cell.GetOptionsCount();
         candidatePreviewImage.sprite = cell.GetOptions()[spriteIndex];
     }
