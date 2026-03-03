@@ -27,15 +27,10 @@ public class ProceduralGenerationManager : MonoBehaviour
     [HideInInspector] public Dictionary<GameObject, CellTile> gameObjectToCell = new Dictionary<GameObject, CellTile>();
     private List<CellTile> placedCells = new List<CellTile>();
 
-    private List<Sprite> sprites = new List<Sprite>();
+    [NonSerialized, HideInInspector] public List<Sprite> sprites = new List<Sprite>();
     
-    public TileData tileDataPallete;
+    public TileData tileDataPalette;
     public Dictionary<Sprite, int[]> marksData = new Dictionary<Sprite, int[]>();
-
-
-    //[SerializeField] private int colorDiversity = 3;
-    //private Dictionary<Color, int> colorMapping = new Dictionary<Color, int>();
-    //private int colorMappingIndex = 1;
 
     [SerializeField] private float visualizationSpeed = 0.1f;
 
@@ -53,12 +48,10 @@ public class ProceduralGenerationManager : MonoBehaviour
     {
         AdjustFOV();
 
-
         if (!LoadData()) { 
             Debug.LogError("Something went wrong. TileData info is missing!");
             return;
         }
-        //VisualizePixelsChecked(colorDiversity, new Vector2Int(sprites[0].texture.width, sprites[0].texture.height));
 
         foreach (CellTile tile in activeCells)
         {
@@ -121,12 +114,12 @@ public class ProceduralGenerationManager : MonoBehaviour
     private bool LoadData()
     {
         bool isOk = true;
-        if (tileDataPallete.sprites.Count == 0)
+        if (tileDataPalette.sprites.Count == 0)
         {
             Debug.Log("TileDataPallete.Sprites is empty");
             isOk = false;
         }
-        if (tileDataPallete.spriteMarks.Count == 0)
+        if (tileDataPalette.spriteMarks.Count == 0)
         {
             Debug.Log("TileDataPallete.SpriteMarks is empty");
             isOk = false;
@@ -134,11 +127,11 @@ public class ProceduralGenerationManager : MonoBehaviour
         if (!isOk) return false;
 
         sprites.Clear();
-        sprites = new List<Sprite>(tileDataPallete.sprites);
+        sprites = new List<Sprite>(tileDataPalette.sprites);
 
         for (int i = 0; i < sprites.Count; i++)
         {
-            marksData[sprites[i]] = tileDataPallete.spriteMarks[i].marks;
+            marksData[sprites[i]] = tileDataPalette.spriteMarks[i].marks;
         }
 
         return true;
@@ -333,61 +326,5 @@ public class ProceduralGenerationManager : MonoBehaviour
         }
         placedCells.Add(toPlace);
         return optionsSnapshot;
-    }
-
-
-
-
-
-
-    void VisualizePixelsChecked(int colorDiversity, Vector2Int spriteSize)
-    {
-        Sprite toCopy = sprites[0];
-        Sprite dummy = Sprite.Create(new Texture2D(spriteSize.x, spriteSize.y, toCopy.texture.format, toCopy.texture.mipmapCount, true), new Rect(0, 0, spriteSize.x, spriteSize.y), new Vector2(0.5f, 0.5f));
-        Graphics.CopyTexture(toCopy.texture, dummy.texture);
-        dummy.texture.Apply();
-
-        Vector2 offset = spriteSize / (colorDiversity * 2);
-        int x = 0, y = 0;
-        for (int side = 0; side < 4; side++)    // origin corner: bottom-left;  directions : up, right, down, left
-        {
-            for (int i = 0; i < colorDiversity; i++)
-            {
-                int step = (side == 0 || side == 1) ? i : (colorDiversity - 1 - i);
-
-                if (side == 0) //bottom - top
-                {
-                    y = (int)(offset.y + step * spriteSize.y / colorDiversity);
-                    x = (int)(offset.y);
-                }
-                else if (side == 1) //left - right
-                {
-                    x = (int)(offset.x + step * spriteSize.x / colorDiversity);
-                    y = (int)(offset.y + (colorDiversity - 1) * spriteSize.y / colorDiversity);
-                }
-                else if (side == 2) //top - bot
-                {
-                    y = (int)(offset.y + step * spriteSize.y / colorDiversity);
-                    x = (int)(offset.x + (colorDiversity - 1) * spriteSize.x / colorDiversity);
-                }
-                else if (side == 3) //right - left
-                {
-                    x = (int)(offset.x + step * spriteSize.x / colorDiversity);
-                    y = (int)(offset.y);
-                }
-                Color color = dummy.texture.GetPixel(x, y);
-
-                dummy.texture.SetPixel(x, y, Color.red);
-                for (int k = 0; k < 3; k++)
-                {
-                    //dummy.texture.SetPixel(x - k, y - k, Color.red);
-                    //dummy.texture.SetPixel(x - k, y + k, Color.red);
-                    //dummy.texture.SetPixel(x + k, y - k, Color.red);
-                    //dummy.texture.SetPixel(x + k, y + k, Color.red);
-                }
-            }
-        }
-        dummy.texture.Apply();
-        sprites[0] = dummy;
     }
 }
