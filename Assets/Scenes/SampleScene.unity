@@ -713,13 +713,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   gridParent: {fileID: 1438117646}
   cellPrefab: {fileID: 3803005135731344120, guid: ca6b4de385fbdb84285f3ced5de91d50, type: 3}
-  newRows: 20
-  newColumns: 20
+  newRows: 1
+  newColumns: 1
   gridOffset: {x: 0, y: 0}
-  tileDataPalette: {fileID: 11400000, guid: 3502f5367ed1996458a7923391d1d190, type: 2}
+  tileDataPalette: {fileID: 11400000, guid: e0d848d2362488b428c3702f534d77c3, type: 2}
   visualizationSpeed: 0.01
   goNext: 0
   isRunning: 0
+  pathColor:
+    serializedVersion: 2
+    rgba: 4288526795
+  colorTolerance: 25
+  walkabilityThreshold: 15
 --- !u!4 &429365954
 Transform:
   m_ObjectHideFlags: 0
