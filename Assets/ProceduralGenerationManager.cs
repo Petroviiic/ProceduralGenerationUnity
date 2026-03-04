@@ -345,8 +345,16 @@ public class ProceduralGenerationManager : MonoBehaviour
     [SerializeField] private int colorTolerance;
     [SerializeField] private float walkabilityThreshold;
 
+    // Each sprite consists of colorDiversity * colorDiversity GraphNodes
+    struct GraphNode
+    {
+        public Vector2 nodePosition;
+        public bool walkable;
+    }
+
     //ovo mozda mozes i u scriptable object da preprocessujes ali aj za pocetak nek bude on runtime;
     //ali svakako mozda je pametnija ideja da uradis tako nesto, da se ne mora isti sprite x puta procesovati ovdje u loopovima
+    //ako nista mogu koristiti dictionary koji ce sacuvati podatke odredjenog spritea ovdje
     private void GeneratePathGraph()
     {
         Color32[] pixels;
@@ -376,6 +384,7 @@ public class ProceduralGenerationManager : MonoBehaviour
                     {
                         int similarColorsCount = 0;
 
+                        // making sure to traverse from top-left corner, to avoid indexing complications later :)
                         for (int pixY = (div - n) * blockSize.y - 1; pixY >= (div - n - 1) * blockSize.y; pixY--)
                         {
                             for (int pixX = m * blockSize.x; pixX < (m + 1) * blockSize.x; pixX++)
@@ -392,6 +401,14 @@ public class ProceduralGenerationManager : MonoBehaviour
                         {
                             Vector2Int walkableCoords = new Vector2Int(x * div + m, y * div + n);
                             walkables[walkableCoords.x + walkableCoords.y * columns * div] = true;
+
+                            //position ce biti nesto na fazon 
+                            /*
+                             * Vector2 offset = spriteSize / (tileData.colorDiversity * 2);
+                             * 
+                             * Vector2 firstNodePos = activeCells[0][0].position(localpos) + new vector2(-spriteSize/2, -spriteSize/2) + offset;
+                             * Vector2 nthNode = firstNodePos + walkableCoords.x + walkableCoords.y * div * columns;
+                             */
                         }
                     }
                 }
