@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using Unity.VisualScripting;
 using UnityEditor;
@@ -326,5 +327,97 @@ public class ProceduralGenerationManager : MonoBehaviour
         }
         placedCells.Add(toPlace);
         return optionsSnapshot;
+    }
+
+
+
+
+    private void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.P))
+        {
+            GeneratePathGraph();
+        }
+    }
+
+
+    [SerializeField] private Color32 pathColor;
+    [SerializeField] private int colorTolerance;
+    [SerializeField] private float walkabilityThreshold;
+
+    //ovo mozda mozes i u scriptable object da preprocessujes ali aj za pocetak nek bude on runtime;
+    //ali svakako mozda je pametnija ideja da uradis tako nesto, da se ne mora isti sprite x puta procesovati ovdje u loopovima
+    private void GeneratePathGraph()
+    {
+        Color32[] pixels;
+        Texture2D cellTex;
+        CellTile cellTile;
+        int div = tileDataPalette.colorDiversity;
+
+        Vector2Int cellSize = new Vector2Int(sprites[0].texture.width, sprites[0].texture.height);
+        
+        bool[] walkables = new bool[columns * rows * div * div];
+        
+        for (int y = 0; y < rows; y++)
+        {
+            for (int x = 0; x < columns; x++)
+            {
+                cellTile = activeCells[x + y * columns];
+
+                cellTex = cellTile.selfObject.GetComponent<SpriteRenderer>().sprite.texture;
+                pixels = cellTex.GetPixels32();
+
+                Color32 pixColor;
+                Vector2Int blockSize = new Vector2Int(cellSize.x, cellSize.y) / div;
+
+                for (int m = 0; m < div; m++)
+                {
+                    for (int n = 0; n < div; n++)
+                    {
+                        int similarColorsCount = 0;
+
+                        for (int pixY = (div - n) * blockSize.y - 1; pixY >= (div - n - 1) * blockSize.y; pixY--)
+                        {
+                            for (int pixX = m * blockSize.x; pixX < (m + 1) * blockSize.x; pixX++)
+                            {
+                                pixColor = pixels[pixX + pixY * cellSize.x];
+
+                                if (AreColorsSimilar(pathColor, pixColor, colorTolerance))
+                                    similarColorsCount++;
+
+                            }
+                        }
+                        
+                        if (similarColorsCount > (walkabilityThreshold / 100f) * (blockSize.x * blockSize.y))
+                        {
+                            Vector2Int walkableCoords = new Vector2Int(x * div + m, y * div + n);
+                            walkables[walkableCoords.x + walkableCoords.y * columns * div] = true;
+                        }
+                    }
+                }
+            }
+
+        }
+
+
+        // T - path is walkable, F - path is an obstacle
+        for (int i = 0; i < rows * div; i++)
+        {
+            System.Text.StringBuilder sb = new System.Text.StringBuilder();
+            for (int j = 0; j < columns * div; j++)
+            {
+                sb.Append(walkables[j + i * columns * div] ? "T " : "F ");
+            }
+            Debug.Log(sb.ToString());
+        }
+    }
+
+    private bool AreColorsSimilar(Color32 target, Color32 pixel, float tolerance)
+    {
+        float diffR = target.r - pixel.r;
+        float diffG = target.g - pixel.g;
+        float diffB = target.b - pixel.b;
+
+        return (diffR * diffR) + (diffG * diffG) + (diffB * diffB) < (tolerance * tolerance);
     }
 }
