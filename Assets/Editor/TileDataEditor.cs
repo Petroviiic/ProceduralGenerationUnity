@@ -231,7 +231,7 @@ public class TileDataEditor : Editor
                 if (side == 0) //bottom - top
                 {
                     y = (int)(offset.y + i * spriteSize.y / tileData.colorDiversity);
-                    x = (int)(offset.y);
+                    x = (int)(offset.x);
                 }
                 else if (side == 1) //left - right
                 {
