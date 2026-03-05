@@ -1,13 +1,8 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
-using Unity.VisualScripting;
-using UnityEditor;
 using UnityEngine;
-using UnityEngine.SceneManagement;
-
+using UnityEngine.Tilemaps;
 
 public class ProceduralGenerationManager : MonoBehaviour
 {
@@ -330,32 +325,94 @@ public class ProceduralGenerationManager : MonoBehaviour
     }
 
 
+    //------------------------PATHFINDING ---------------------------
 
 
-    private void Update()
-    {
-        if (Input.GetKeyDown(KeyCode.P))
-        {
-            GeneratePathGraph();
-        }
-    }
-
+    //za pocetak cu izabrati samo 2 tacke i onda kad se izadje iz mapmode da nadje put izmedju njih ako je moguc, ali mogu dodati
+    //ili da se moze izabrati vise tacaka, i onda da ide od jedne do druge pa do trece itd, kao usputne stanice, znaci da imam
+    //listu odredista, ili da izaberem jednu tacku, pa da prati mis i u real timeu racuna put do njega. takodje mogu napraviti i 
+    //kombinaciju ovih ideja, da prati mis od A do kad se pritisne na B, pa da prati do C itd
 
     [SerializeField] private Color32 pathColor;
     [SerializeField] private int colorTolerance;
     [SerializeField] private float walkabilityThreshold;
 
-    // Each sprite consists of colorDiversity * colorDiversity GraphNodes
-    struct GraphNode
+    private List<GameObject> marks = new List<GameObject>();
+    [SerializeField] private Sprite blankSprite;
+    private GraphNode[] walkables;
+
+    private bool isInMapMode = false;
+    private GraphNode startNode;
+    private GraphNode endNode;
+    private void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.P))
+        {
+            walkables = new GraphNode[columns * rows * tileDataPalette.colorDiversity * tileDataPalette.colorDiversity];
+            walkables = GeneratePathGraph();
+        }
+
+        if (Input.GetKeyDown(KeyCode.M) && walkables != null && walkables.Length != 0)
+        {
+            Debug.Log("Map mode toggle");
+
+            isInMapMode = !isInMapMode;
+            if (isInMapMode)
+            {
+                startNode = null;
+                endNode = null;     //reseting start and end
+            }
+        }
+
+        if (isInMapMode && Input.GetMouseButtonDown(0))
+        {
+            Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+
+            int gridX = Mathf.FloorToInt(mousePos.x);
+            int gridY = Mathf.FloorToInt(mousePos.y);
+
+            int index = gridX + gridY * columns * tileDataPalette.colorDiversity;
+
+            if (index >= 0 && index < walkables.Length && walkables[index].walkable)
+            {
+                SelectPoint(index);
+            }
+        }
+    }
+    private void SelectPoint(int index)
+    {
+        if (startNode == null)
+            startNode = walkables[index];
+        else
+            endNode = walkables[index];
+    }
+    public class GraphNode
     {
         public Vector2 nodePosition;
         public bool walkable;
+
+        // A* 
+        public int gCost; // Udaljenost od starta
+        public int hCost; // Udaljenost do cilja (heuristika)
+        public int fCost => gCost + hCost; // Ukupni trošak
+
+        public GraphNode parent; 
+        public int gridX; 
+        public int gridY; 
+
+        public GraphNode(bool _walkable, Vector2 _pos, int _x, int _y)
+        {
+            walkable = _walkable;
+            nodePosition = _pos;
+            gridX = _x;
+            gridY = _y;
+        }
     }
 
     //ovo mozda mozes i u scriptable object da preprocessujes ali aj za pocetak nek bude on runtime;
     //ali svakako mozda je pametnija ideja da uradis tako nesto, da se ne mora isti sprite x puta procesovati ovdje u loopovima
     //ako nista mogu koristiti dictionary koji ce sacuvati podatke odredjenog spritea ovdje
-    private void GeneratePathGraph()
+    private GraphNode[] GeneratePathGraph()
     {
         Color32[] pixels;
         Texture2D cellTex;
@@ -363,8 +420,12 @@ public class ProceduralGenerationManager : MonoBehaviour
         int div = tileDataPalette.colorDiversity;
 
         Vector2Int cellSize = new Vector2Int(sprites[0].texture.width, sprites[0].texture.height);
-        
-        bool[] walkables = new bool[columns * rows * div * div];
+
+        Vector2 cellSizeWorld = new Vector2(-1, 1);
+        Vector2 offset = -cellSizeWorld / div;
+        Vector2 firstNodePos = (Vector2)activeCells[0].selfObject.transform.position + cellSizeWorld / 2 + offset / 2;
+
+        GraphNode[] walkables = new GraphNode[columns * rows * div * div];
         
         for (int y = 0; y < rows; y++)
         {
@@ -397,35 +458,61 @@ public class ProceduralGenerationManager : MonoBehaviour
                             }
                         }
                         
+                        Vector2Int walkableCoords = new Vector2Int(x * div + m, y * div + n);
+
+                        GraphNode node = new GraphNode(false, firstNodePos + walkableCoords * offset, walkableCoords.x, walkableCoords.y);
+                      
+
                         if (similarColorsCount > (walkabilityThreshold / 100f) * (blockSize.x * blockSize.y))
                         {
-                            Vector2Int walkableCoords = new Vector2Int(x * div + m, y * div + n);
-                            walkables[walkableCoords.x + walkableCoords.y * columns * div] = true;
-
-                            //position ce biti nesto na fazon 
-                            /*
-                             * Vector2 offset = spriteSize / (tileData.colorDiversity * 2);
-                             * 
-                             * Vector2 firstNodePos = activeCells[0][0].position(localpos) + new vector2(-spriteSize/2, -spriteSize/2) + offset;
-                             * Vector2 nthNode = firstNodePos + walkableCoords.x + walkableCoords.y * div * columns;
-                             */
+                            node.walkable = true;
                         }
+
+                        walkables[walkableCoords.x + walkableCoords.y * columns * div] = node;
                     }
                 }
             }
 
         }
 
-
+        //foreach(GameObject item in marks)
+        //{
+        //    item.SetActive(false);
+        //}
+        //marks.Clear();  
         // T - path is walkable, F - path is an obstacle
         for (int i = 0; i < rows * div; i++)
         {
             System.Text.StringBuilder sb = new System.Text.StringBuilder();
             for (int j = 0; j < columns * div; j++)
             {
-                sb.Append(walkables[j + i * columns * div] ? "T " : "F ");
+                GraphNode curr = walkables[j + i * columns * div];
+                sb.Append(curr.walkable ? "T " : "F ");
+
+                //GameObject test = new GameObject();
+                //test.transform.position = curr.nodePosition;
+                //test.transform.localScale = new Vector3(0.1f, 0.1f, 0.1f);
+                //test.AddComponent<SpriteRenderer>().sprite = blankSprite;
+                //test.GetComponent<SpriteRenderer>().color = curr.walkable ? Color.green : Color.red;
+                //test.GetComponent<SpriteRenderer>().sortingOrder = 5;
+                //marks.Add(test);    
             }
             Debug.Log(sb.ToString());
+        }
+
+
+        return walkables;
+    }
+    private void OnDrawGizmos()
+    {
+        if (walkables == null || walkables.Length == 0)
+            return;
+        foreach (GraphNode node in walkables)
+        {
+            Vector3 pos = node.nodePosition;
+
+            Gizmos.color = node.walkable ? Color.green : Color.red;
+            Gizmos.DrawWireSphere(pos, .1f);
         }
     }
 
