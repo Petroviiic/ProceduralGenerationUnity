@@ -716,7 +716,7 @@ MonoBehaviour:
   newRows: 1
   newColumns: 1
   gridOffset: {x: 0, y: 0}
-  tileDataPalette: {fileID: 11400000, guid: e0d848d2362488b428c3702f534d77c3, type: 2}
+  tileDataPalette: {fileID: 11400000, guid: 0ff6f96a263cfca4a8e4f285aaf88fbe, type: 2}
   visualizationSpeed: 0.01
   goNext: 0
   isRunning: 0
@@ -724,7 +724,8 @@ MonoBehaviour:
     serializedVersion: 2
     rgba: 4288526795
   colorTolerance: 25
-  walkabilityThreshold: 15
+  walkabilityThreshold: 30
+  blankSprite: {fileID: 7482667652216324306, guid: 48e93eef0688c4a259cb0eddcd8661f7, type: 3}
 --- !u!4 &429365954
 Transform:
   m_ObjectHideFlags: 0
