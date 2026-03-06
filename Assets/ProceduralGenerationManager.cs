@@ -409,9 +409,9 @@ public class ProceduralGenerationManager : MonoBehaviour
         public bool walkable;
 
         // A* 
-        public int gCost; // Udaljenost od starta
-        public int hCost; // Udaljenost do cilja (heuristika)
-        public int fCost; // Ukupni trošak
+        public int gCost; // Distance from start
+        public int hCost; // Distance from end
+        public int fCost; // Sum of these two
 
         public GraphNode parent;
         public Vector2Int gridCoords;
@@ -425,6 +425,12 @@ public class ProceduralGenerationManager : MonoBehaviour
             walkable = _walkable;
             nodePosition = _pos;
             gridCoords = new Vector2Int(x, y);
+        }
+        public void SetCosts(int gCost, int hCost)
+        {
+            this.hCost = hCost;
+            this.gCost = gCost;
+            this.fCost = hCost + gCost;
         }
     }
 
@@ -545,6 +551,18 @@ public class ProceduralGenerationManager : MonoBehaviour
     }
 
 
+    private Vector2Int[] AStarDirections = new Vector2Int[]
+    {
+        new Vector2Int(1, 0),
+        new Vector2Int(0, 1),
+        new Vector2Int(-1, 0),
+        new Vector2Int(0, -1),
+
+        new Vector2Int(1, 1),
+        new Vector2Int(-1, -1),
+        new Vector2Int(-1, 1),
+        new Vector2Int(1, -1),
+    };
     private void AStar(GraphNode start, GraphNode end)
     {
         if (start == null || end == null)
@@ -557,7 +575,6 @@ public class ProceduralGenerationManager : MonoBehaviour
         // jer npr kod MyTiles nema poente provjeravati njih, nego samo ove lijevo desno gore dole jer sam tako napravio puteve
         
         // dodaj priority queue kad zavrsis sve, zasad nek budu liste
-        // nodeDistance - horizontalna udaljenost dva nodea pomnozena sa 10 i zaokruzena na najblizi integer
 
         List<GraphNode> open = new List<GraphNode>();
         HashSet<GraphNode> closed = new HashSet<GraphNode>();
@@ -569,9 +586,7 @@ public class ProceduralGenerationManager : MonoBehaviour
             n.parent = null; 
         }
 
-        start.gCost = 0;
-        start.hCost = FindDistance(start, end);
-        start.fCost = FindDistance(start, end);     //stavi ovo mzd u metodu u klasi da se automatski izracuna
+        start.SetCosts(0, FindDistance(start, end));
         open.Add(start);
 
         while (open.Count > 0)
@@ -585,16 +600,15 @@ public class ProceduralGenerationManager : MonoBehaviour
 
             open.Remove(current);
             closed.Add(current);
-            Debug.Log(("picked ", current.gridCoords));
             
             if (current == end)
             {
                 Debug.Log("Path found");
-                ReconstructPath(start, end);
+                ReconstructPath(start, current);
                 return;
             }
 
-            foreach (var dir in directions)
+            foreach (var dir in AStarDirections)
             {
                 GraphNode neighbor = GetGraphNeighbor(current, dir);
                 if (neighbor == null || !neighbor.walkable || closed.Contains(neighbor))
@@ -613,14 +627,10 @@ public class ProceduralGenerationManager : MonoBehaviour
                 {
                     neighbor.parent = current;
 
-                    int hCost = FindDistance(neighbor, end);
-                    neighbor.hCost = hCost;
-                    neighbor.gCost = gCost;
-                    neighbor.fCost = hCost + gCost;
+                    neighbor.SetCosts(gCost, FindDistance(neighbor, end));
 
                     if (!isInOpen)
                     {
-                        Debug.Log(("added ", neighbor.gridCoords));
                         open.Add(neighbor);
                     }
                 }
