@@ -1,8 +1,7 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Tilemaps;
 
 public class ProceduralGenerationManager : MonoBehaviour
 {
@@ -354,28 +353,46 @@ public class ProceduralGenerationManager : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.M) && walkables != null && walkables.Length != 0)
         {
-            Debug.Log("Map mode toggle");
 
             isInMapMode = !isInMapMode;
             if (isInMapMode)
             {
+                Debug.Log("Map mode ON");
                 startNode = null;
                 endNode = null;     //reseting start and end
             }
+            else
+            {
+                Debug.Log("Map mode OFF");
+                AStar(startNode, endNode);
+            }
         }
 
+
+        //rewrite ovo da ne racunas npr bounds svaki put 
         if (isInMapMode && Input.GetMouseButtonDown(0))
         {
-            Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+            Vector3 worldMousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+            worldMousePos.z = 0;
 
-            int gridX = Mathf.FloorToInt(mousePos.x);
-            int gridY = Mathf.FloorToInt(mousePos.y);
+            Transform firstCell = activeCells[0].selfObject.transform;
+            Vector3 localPosToFirstCell = firstCell.InverseTransformPoint(worldMousePos);
+            Vector2 sSize = sprites[0].bounds.size;
+
+
+            int gridX = Mathf.FloorToInt((localPosToFirstCell.x / sSize.x + 0.5f) * tileDataPalette.colorDiversity);
+            int gridY = -(Mathf.FloorToInt((localPosToFirstCell.y / sSize.y - 0.5f) * tileDataPalette.colorDiversity) + 1);
 
             int index = gridX + gridY * columns * tileDataPalette.colorDiversity;
 
             if (index >= 0 && index < walkables.Length && walkables[index].walkable)
             {
+                Debug.Log("Selecting tile at: " + index + ",Grid position: " + new Vector2(gridX, gridY));
                 SelectPoint(index);
+            }
+            else
+            {
+                Debug.Log("Out of bounds or cell not walkable. Error selecting a tile at  " + index + ",Grid position: " + new Vector2(gridX, gridY));
             }
         }
     }
@@ -394,18 +411,20 @@ public class ProceduralGenerationManager : MonoBehaviour
         // A* 
         public int gCost; // Udaljenost od starta
         public int hCost; // Udaljenost do cilja (heuristika)
-        public int fCost => gCost + hCost; // Ukupni tro�ak
+        public int fCost; // Ukupni trošak
 
-        public GraphNode parent; 
-        public int gridX; 
-        public int gridY; 
+        public GraphNode parent;
+        public Vector2Int gridCoords;
 
-        public GraphNode(bool _walkable, Vector2 _pos, int _x, int _y)
+        public GraphNode(bool _walkable, Vector2 _pos, int x, int y)
         {
+            gCost = int.MaxValue;
+            hCost = int.MaxValue;
+            fCost = int.MaxValue;
+
             walkable = _walkable;
             nodePosition = _pos;
-            gridX = _x;
-            gridY = _y;
+            gridCoords = new Vector2Int(x, y);
         }
     }
 
@@ -523,5 +542,134 @@ public class ProceduralGenerationManager : MonoBehaviour
         float diffB = target.b - pixel.b;
 
         return (diffR * diffR) + (diffG * diffG) + (diffB * diffB) < (tolerance * tolerance);
+    }
+
+
+    private void AStar(GraphNode start, GraphNode end)
+    {
+        if (start == null || end == null)
+        {
+            Debug.Log("Start or End nodes not set. Can't start pathfinding!");
+            return;
+        }
+
+        // Neka npr u scriptable object ima neki checkmark da li da se provjeravaju dijagonalni putevi ili ne,
+        // jer npr kod MyTiles nema poente provjeravati njih, nego samo ove lijevo desno gore dole jer sam tako napravio puteve
+        
+        // dodaj priority queue kad zavrsis sve, zasad nek budu liste
+        // nodeDistance - horizontalna udaljenost dva nodea pomnozena sa 10 i zaokruzena na najblizi integer
+
+        List<GraphNode> open = new List<GraphNode>();
+        HashSet<GraphNode> closed = new HashSet<GraphNode>();
+
+
+        foreach (GraphNode n in walkables)
+        {
+            n.gCost = int.MaxValue;
+            n.parent = null; 
+        }
+
+        start.gCost = 0;
+        start.hCost = FindDistance(start, end);
+        start.fCost = FindDistance(start, end);     //stavi ovo mzd u metodu u klasi da se automatski izracuna
+        open.Add(start);
+
+        while (open.Count > 0)
+        {
+            GraphNode current = open[0];   //node je onaj sa najmanjim fcostom
+            foreach (GraphNode node in open)
+            {
+                if (node.fCost < current.fCost || (node.fCost == current.fCost && node.hCost < current.hCost))
+                    current = node;
+            }
+
+            open.Remove(current);
+            closed.Add(current);
+            Debug.Log(("picked ", current.gridCoords));
+            
+            if (current == end)
+            {
+                Debug.Log("Path found");
+                ReconstructPath(start, end);
+                return;
+            }
+
+            foreach (var dir in directions)
+            {
+                GraphNode neighbor = GetGraphNeighbor(current, dir);
+                if (neighbor == null || !neighbor.walkable || closed.Contains(neighbor))
+                    continue;
+
+                int moveCostToNeighbor = (dir.x != 0 && dir.y != 0) ? 14 : 10;
+                int gCost = current.gCost + moveCostToNeighbor;
+
+                bool isInOpen = false;
+                if (gCost >= neighbor.gCost)
+                {
+                    isInOpen = open.Contains(neighbor);
+                }
+
+                if (gCost < neighbor.gCost || !isInOpen)
+                {
+                    neighbor.parent = current;
+
+                    int hCost = FindDistance(neighbor, end);
+                    neighbor.hCost = hCost;
+                    neighbor.gCost = gCost;
+                    neighbor.fCost = hCost + gCost;
+
+                    if (!isInOpen)
+                    {
+                        Debug.Log(("added ", neighbor.gridCoords));
+                        open.Add(neighbor);
+                    }
+                }
+            }
+        }
+
+        Debug.Log("Couldnt find path");
+        return;
+    }
+
+    private GraphNode GetGraphNeighbor(GraphNode node, Vector2Int dir)
+    {
+        if (node == null)
+            return null;
+
+        Vector2Int coords = node.gridCoords + dir;
+
+        if (coords.x < 0 || coords.y < 0 || coords.y >= rows * tileDataPalette.colorDiversity || coords.x >= columns * tileDataPalette.colorDiversity)
+            return null;
+        int index = coords.x + coords.y * columns * tileDataPalette.colorDiversity;
+
+        return walkables[index];
+    }
+
+    private int FindDistance(GraphNode a, GraphNode b)
+    {
+        int dstX = Mathf.Abs(a.gridCoords.x - b.gridCoords.x);
+        int dstY = Mathf.Abs(a.gridCoords.y - b.gridCoords.y);
+
+        if (dstX > dstY)
+            return 14 * dstY + 10 * (dstX - dstY);
+
+        return 14 * dstX + 10 * (dstY - dstX);
+    }
+
+
+    [SerializeField] private LineRenderer lineRenderer;
+    private void ReconstructPath(GraphNode start, GraphNode end)
+    {
+        List<Vector3> path = new List<Vector3>();
+        GraphNode curr = end;
+        while (curr != start)
+        {
+            path.Add(curr.nodePosition);
+            curr = curr.parent;
+        }
+        path.Add(start.nodePosition);
+
+        lineRenderer.positionCount = path.Count;
+        lineRenderer.SetPositions(path.ToArray());
     }
 }
