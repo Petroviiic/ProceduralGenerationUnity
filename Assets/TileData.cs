@@ -12,6 +12,8 @@ public class TileData : ScriptableObject
 
     public List<Sprite> sprites = new List<Sprite>();
     public List<Marks> spriteMarks = new List<Marks>();
+
+    public bool UseDiagonalMovementPathfinding;
 }
 
 [System.Serializable]   
