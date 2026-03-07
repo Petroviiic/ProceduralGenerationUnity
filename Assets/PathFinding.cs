@@ -1,8 +1,11 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 
-
+using Debug = UnityEngine.Debug;
 
 public class PathFinding : MonoBehaviour
 {
@@ -16,7 +19,7 @@ public class PathFinding : MonoBehaviour
     [SerializeField] private int colorTolerance;
     [SerializeField] private float walkabilityThreshold;
 
-    private Dictionary<Sprite, bool[]> spriteMarks;
+    private Dictionary<Sprite, GraphNode[]> spriteMarks = new Dictionary<Sprite, GraphNode[]>();
     private GraphNode[] walkables;
 
     private bool isInMapMode = false;
@@ -57,11 +60,10 @@ public class PathFinding : MonoBehaviour
         if (firstActiveCell == null)
             return;
 
-        spriteMarks = new Dictionary<Sprite, bool[]>();
+        
         walkables = new GraphNode[columns * rows * colorDiversity * colorDiversity];
         walkables = GeneratePathGraph();
     }
-
     private void Update()
     {
         if (Input.GetKeyDown(KeyCode.M) && walkables != null && walkables.Length != 0)
@@ -128,8 +130,6 @@ public class PathFinding : MonoBehaviour
     //ako nista mogu koristiti dictionary koji ce sacuvati podatke odredjenog spritea ovdje
     private GraphNode[] GeneratePathGraph()
     {
-        Color32[] pixels;
-        Texture2D cellTex;
         CellTile cellTile;
 
         Vector2Int cellSize = new Vector2Int(manager.sprites[0].texture.width, manager.sprites[0].texture.height);
@@ -137,6 +137,8 @@ public class PathFinding : MonoBehaviour
         Vector2 cellSizeWorld = new Vector2(-1, 1);
         Vector2 offset = -cellSizeWorld / colorDiversity;
         Vector2 firstNodePos = (Vector2)firstActiveCell.selfObject.transform.position + cellSizeWorld / 2 + offset / 2;
+
+        Vector2Int blockSize = new Vector2Int(cellSize.x, cellSize.y) / colorDiversity; 
 
         GraphNode[] walkables = new GraphNode[columns * rows * colorDiversity * colorDiversity];
 
@@ -146,48 +148,26 @@ public class PathFinding : MonoBehaviour
             {
                 cellTile = manager.activeCells[x + y * columns];
 
-                cellTex = cellTile.selfObject.GetComponent<SpriteRenderer>().sprite.texture;
-                pixels = cellTex.GetPixels32();
+                Sprite cellSprite = cellTile.spriteRenderer.sprite;
 
-                Color32 pixColor;
-                Vector2Int blockSize = new Vector2Int(cellSize.x, cellSize.y) / colorDiversity;
-
-                for (int m = 0; m < colorDiversity; m++)
+                GraphNode[] marks;
+                if (!spriteMarks.TryGetValue(cellSprite, out marks))
                 {
-                    for (int n = 0; n < colorDiversity; n++)
-                    {
-                        int similarColorsCount = 0;
+                    marks = GenerateSpriteMarks(cellSprite, cellSize, blockSize);
+                    spriteMarks[cellSprite] = marks;
+                }
 
-                        // making sure to traverse from top-left corner, to avoid indexing complications later :)
-                        for (int pixY = (colorDiversity - n) * blockSize.y - 1; pixY >= (colorDiversity - n - 1) * blockSize.y; pixY--)
-                        {
-                            for (int pixX = m * blockSize.x; pixX < (m + 1) * blockSize.x; pixX++)
-                            {
-                                pixColor = pixels[pixX + pixY * cellSize.x];
+                foreach(GraphNode n in marks)
+                {
+                    Vector2Int walkableCoords = n.gridCoords + new Vector2Int(x * colorDiversity, y * colorDiversity);
 
-                                if (AreColorsSimilar(pathColor, pixColor, colorTolerance))
-                                    similarColorsCount++;
-
-                            }
-                        }
-
-                        Vector2Int walkableCoords = new Vector2Int(x * colorDiversity + m, y * colorDiversity + n);
-
-                        GraphNode node = new GraphNode(false, firstNodePos + walkableCoords * offset, walkableCoords.x, walkableCoords.y);
-
-
-                        if (similarColorsCount > (walkabilityThreshold / 100f) * (blockSize.x * blockSize.y))
-                        {
-                            node.walkable = true;
-                        }
-
-                        walkables[walkableCoords.x + walkableCoords.y * columns * colorDiversity] = node;
-                    }
+                    GraphNode node = new GraphNode(n.walkable, firstNodePos + walkableCoords * offset, walkableCoords.x, walkableCoords.y);
+                    walkables[walkableCoords.x + walkableCoords.y * columns * colorDiversity] = node;
                 }
             }
 
         }
-        
+
         // T - path is walkable, F - path is an obstacle
         for (int i = 0; i < rows * colorDiversity; i++)
         {
@@ -202,6 +182,45 @@ public class PathFinding : MonoBehaviour
 
 
         return walkables;
+    }
+
+    private GraphNode[] GenerateSpriteMarks(Sprite sprite, Vector2Int cellSize, Vector2Int blockSize)
+    {
+        GraphNode[] marks = new GraphNode[colorDiversity*colorDiversity];
+        Texture2D cellTex = sprite.texture;
+        Color32[] pixels = cellTex.GetPixels32();
+        Color32 pixColor;
+
+        for (int m = 0; m < colorDiversity; m++)
+        {
+            for (int n = 0; n < colorDiversity; n++)
+            {
+                int similarColorsCount = 0;
+
+                // making sure to traverse from top-left corner, to avoid indexing complications later :)
+                for (int pixY = (colorDiversity - n) * blockSize.y - 1; pixY >= (colorDiversity - n - 1) * blockSize.y; pixY--)
+                {
+                    for (int pixX = m * blockSize.x; pixX < (m + 1) * blockSize.x; pixX++)
+                    {
+                        pixColor = pixels[pixX + pixY * cellSize.x];
+
+                        if (AreColorsSimilar(pathColor, pixColor, colorTolerance))
+                            similarColorsCount++;
+
+                    }
+                }
+
+                GraphNode node = new GraphNode(false, Vector2.zero, m, n);
+                
+                if (similarColorsCount > (walkabilityThreshold / 100f) * (blockSize.x * blockSize.y))
+                {
+                    node.walkable = true;
+                }
+
+                marks[m + n * colorDiversity] = node;
+            }
+        }
+        return marks;
     }
     private void OnDrawGizmos()
     {

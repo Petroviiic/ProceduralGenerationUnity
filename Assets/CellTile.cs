@@ -10,7 +10,7 @@ public class CellTile
     
     public GameObject selfObject { get; private set; }
     public BoxCollider2D selfCollider { get; private set; }
-    private SpriteRenderer spriteRenderer;
+    public SpriteRenderer spriteRenderer;
 
     private List<Sprite> options = new List<Sprite>();
     private Vector2Int coordinates = new Vector2Int(-1, -1);
