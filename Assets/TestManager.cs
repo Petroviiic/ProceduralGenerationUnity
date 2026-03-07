@@ -30,6 +30,7 @@ public class TestManager : MonoBehaviour
     }
     private void Update()
     {
+        //Grid Generation
         if (Input.GetKeyDown(KeyCode.Space))        //inits grid only
         {
             StartGeneration(GenerationType.InitGridOnly);
@@ -49,6 +50,14 @@ public class TestManager : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.V))            //shows which pixels are used for sampling
         {
             VisualizePixelsChecked();
+        }
+
+
+
+        //Pathfinding
+        if (Input.GetKeyDown(KeyCode.P))
+        {
+            generationManager.InitPathFinding();
         }
 
 
