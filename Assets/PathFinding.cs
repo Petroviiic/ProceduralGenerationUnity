@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 
@@ -9,14 +10,15 @@ using Debug = UnityEngine.Debug;
 
 public class PathFinding : MonoBehaviour
 {
-    //za pocetak cu izabrati samo 2 tacke i onda kad se izadje iz mapmode da nadje put izmedju njih ako je moguc, ali mogu dodati
-    //ili da se moze izabrati vise tacaka, i onda da ide od jedne do druge pa do trece itd, kao usputne stanice, znaci da imam
-    //listu odredista, ili da izaberem jednu tacku, pa da prati mis i u real timeu racuna put do njega. takodje mogu napraviti i 
-    //kombinaciju ovih ideja, da prati mis od A do kad se pritisne na B, pa da prati do C itd
-
-
+    [Header("Pathfinding Settings")] 
+    [Tooltip("What color is considered walkable?")]
     [SerializeField] private Color32 pathColor;
+
+    [Tooltip("How similar to selected color a pixel should be (0-255) in order to be detected as walkable.")]
     [SerializeField] private int colorTolerance;
+
+    [Tooltip("The percentage of pixels in a block that must satisfy the Color Tolerance for the entire cell to be marked as walkable.")]
+    [Range(0f, 100f)] 
     [SerializeField] private float walkabilityThreshold;
 
     private Dictionary<Sprite, GraphNode[]> spriteMarks = new Dictionary<Sprite, GraphNode[]>();
@@ -24,9 +26,15 @@ public class PathFinding : MonoBehaviour
 
     private bool isInMapMode = false;
     private GraphNode startNode;
-    private GraphNode endNode;
-   // private List<GraphNode> targetNodes;
+    private GraphNode currentEndNode;
+    private Stack<PathData> pathHistory = new Stack<PathData>();
 
+    [Header("Visual Indicators")]
+    [SerializeField] private GameObject pathStartFlagGO;
+    [SerializeField] private GameObject pathEndFlagGO;
+    [SerializeField] private LineRenderer lineRenderer;
+
+    [Space(10)]
     // Generation manager data
     [SerializeField] private ProceduralGenerationManager manager;
     private int columns;
@@ -49,6 +57,11 @@ public class PathFinding : MonoBehaviour
         new Vector2Int(1, -1),
     };
 
+    private void Start()
+    {
+        UpdatePathFlag(null, startNode, pathStartFlagGO);
+        UpdatePathFlag(null, currentEndNode, pathEndFlagGO);
+    }
     public void InitPathFinding(int columns, int rows, int colorDiversity, CellTile firstActiveCell, bool diagonalsAllowed)
     {
         this.columns = columns;
@@ -60,7 +73,6 @@ public class PathFinding : MonoBehaviour
         if (firstActiveCell == null)
             return;
 
-        
         walkables = new GraphNode[columns * rows * colorDiversity * colorDiversity];
         walkables = GeneratePathGraph();
     }
@@ -68,18 +80,15 @@ public class PathFinding : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.M) && walkables != null && walkables.Length != 0)
         {
-
+            ResetCurrentPath();
             isInMapMode = !isInMapMode;
             if (isInMapMode)
             {
                 Debug.Log("Map mode ON");
-                startNode = null;
-                endNode = null;     //reseting start and end
             }
             else
             {
                 Debug.Log("Map mode OFF");
-                AStar(startNode, endNode);
             }
         }
 
@@ -101,11 +110,16 @@ public class PathFinding : MonoBehaviour
             if (SelectPoint(gridX, gridY))
             {
                 Debug.Log("Selecting tile at: " + new Vector2(gridX, gridY));
+                AStar(startNode, currentEndNode);
             }           
             else
             {
                 Debug.Log("Out of bounds or cell not walkable. Error selecting a tile at grid position: " + new Vector2(gridX, gridY));
             }
+        }
+        if (isInMapMode && Input.GetKeyDown(KeyCode.Backspace))
+        {
+            DeselectPoint();
         }
     }
 
@@ -118,16 +132,72 @@ public class PathFinding : MonoBehaviour
         }
 
         if (startNode == null)
+        {
+            UpdatePathFlag(walkables[index], startNode, pathStartFlagGO);
             startNode = walkables[index];
-        else
-            endNode = walkables[index];
 
+            pathEndFlagGO.SetActive(true);
+        }
+        currentEndNode = walkables[index];
+        UpdatePathFlag(currentEndNode, currentEndNode, pathEndFlagGO);
+           
         return true;
     }
+    private void DeselectPoint()
+    {
+        if (pathHistory.Count < 3)
+        {
+            ResetCurrentPath();
+            return;
+        }
+        pathHistory.Pop();
+        PathData data = pathHistory.Peek();
+        
+        startNode = data.currentStartNode;
 
-    //ovo mozda mozes i u scriptable object da preprocessujes ali aj za pocetak nek bude on runtime;
-    //ali svakako mozda je pametnija ideja da uradis tako nesto, da se ne mora isti sprite x puta procesovati ovdje u loopovima
-    //ako nista mogu koristiti dictionary koji ce sacuvati podatke odredjenog spritea ovdje
+        currentEndNode = null;
+        UpdatePathFlag(startNode, currentEndNode, pathEndFlagGO);
+
+        lineRenderer.positionCount = data.lineRendererPoints.Length;
+        lineRenderer.SetPositions(data.lineRendererPoints);
+    }
+
+    private void UpdatePathFlag(GraphNode node, GraphNode targetNode, GameObject flag)
+    {
+        if (node == null)
+        {
+            flag.SetActive(false);
+            return;
+        }
+        if (node != null && targetNode == null)
+            flag.SetActive(true);
+
+        flag.transform.position = node.nodePosition;
+    }
+
+    public void ResetCurrentPath()
+    {
+        UpdatePathFlag(null, startNode, pathStartFlagGO);
+        UpdatePathFlag(null, currentEndNode, pathEndFlagGO);
+
+        startNode = null;
+        currentEndNode = null;
+        pathHistory.Clear();
+        lineRenderer.positionCount = 0;
+
+
+        pathHistory.Push(new PathData
+        {
+            lineRendererPoints = new Vector3[0],
+            currentStartNode = null
+        });
+
+    }
+
+
+
+
+
     private GraphNode[] GeneratePathGraph()
     {
         CellTile cellTile;
@@ -197,7 +267,7 @@ public class PathFinding : MonoBehaviour
             {
                 int similarColorsCount = 0;
 
-                // making sure to traverse from top-left corner, to avoid indexing complications later :)
+                // traversing from top-left corner, to avoid indexing complications later :)
                 for (int pixY = (colorDiversity - n) * blockSize.y - 1; pixY >= (colorDiversity - n - 1) * blockSize.y; pixY--)
                 {
                     for (int pixX = m * blockSize.x; pixX < (m + 1) * blockSize.x; pixX++)
@@ -275,13 +345,14 @@ public class PathFinding : MonoBehaviour
             closed.Add(current);
             if (current == null)
             {
-                Debug.Log("Error!");
+                Debug.LogError("Error!");
                 return;
             }
             if (current == end)
             {
                 Debug.Log("Path found");
                 ReconstructPath(start, current);
+                startNode = currentEndNode;
                 return;
             }
 
@@ -315,7 +386,7 @@ public class PathFinding : MonoBehaviour
             }
         }
 
-        Debug.Log("Couldnt find path");
+        Debug.LogWarning("Couldn't find path");
         return;
     }
 
@@ -345,25 +416,49 @@ public class PathFinding : MonoBehaviour
     }
 
 
-    [SerializeField] private LineRenderer lineRenderer;
     private void ReconstructPath(GraphNode start, GraphNode end)
     {
-        List<Vector3> path = new List<Vector3>();
+        List<Vector3> pathList = new List<Vector3>();
         GraphNode curr = end;
         while (curr != start)
         {
-            path.Add(curr.nodePosition);
+            pathList.Add(curr.nodePosition);
             curr = curr.parent;
         }
-        path.Add(start.nodePosition);
+        pathList.Add(start.nodePosition);
 
-        lineRenderer.positionCount = path.Count;
-        lineRenderer.SetPositions(path.ToArray());
+
+        int oldLen = lineRenderer.positionCount;
+        Vector3[] path;
+        if (oldLen <= 1)
+        {
+            path = pathList.ToArray();
+        }
+        else
+        {
+            path = new Vector3[pathList.Count + oldLen - 1];
+            pathList.CopyTo(path);
+
+            Vector3[] old = pathHistory.Peek().lineRendererPoints;
+
+            Array.Copy(old, 0, path, path.Length - oldLen, oldLen);
+        }
+
+        pathHistory.Push(new PathData
+        {
+            lineRendererPoints = path,
+            currentStartNode = currentEndNode
+        });
+        lineRenderer.positionCount = path.Length;
+        lineRenderer.SetPositions(path);
     }
-
 }
 
-
+public struct PathData
+{
+    public Vector3[] lineRendererPoints;
+    public GraphNode currentStartNode;
+}
 
 
 public class GraphNode : IHeapItem<GraphNode>
@@ -418,4 +513,7 @@ public class GraphNode : IHeapItem<GraphNode>
         this.gCost = gCost;
         this.fCost = hCost + gCost;
     }
+   
 }
+
+
