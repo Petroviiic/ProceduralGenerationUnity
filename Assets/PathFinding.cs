@@ -10,7 +10,7 @@ using Debug = UnityEngine.Debug;
 
 public class PathFinding : MonoBehaviour
 {
-    [Header("Pathfinding Settings")] 
+    [Header("Pathfinding Settings")]
     [Tooltip("What color is considered walkable?")]
     [SerializeField] private Color32 pathColor;
 
@@ -18,7 +18,7 @@ public class PathFinding : MonoBehaviour
     [SerializeField] private int colorTolerance;
 
     [Tooltip("The percentage of pixels in a block that must satisfy the Color Tolerance for the entire cell to be marked as walkable.")]
-    [Range(0f, 100f)] 
+    [Range(0f, 100f)]
     [SerializeField] private float walkabilityThreshold;
 
     private Dictionary<Sprite, GraphNode[]> spriteMarks = new Dictionary<Sprite, GraphNode[]>();
@@ -73,12 +73,20 @@ public class PathFinding : MonoBehaviour
         if (firstActiveCell == null)
             return;
 
+        ResetPathData();
         walkables = new GraphNode[columns * rows * colorDiversity * colorDiversity];
         walkables = GeneratePathGraph();
     }
-    private void Update()
+    public void ResetPathData()
     {
-        if (Input.GetKeyDown(KeyCode.M) && walkables != null && walkables.Length != 0)
+        isInMapMode = false;
+        ResetCurrentPath();
+        walkables = null;
+    }
+
+    public void MapMode()
+    {
+        if (walkables != null && walkables.Length != 0)
         {
             ResetCurrentPath();
             isInMapMode = !isInMapMode;
@@ -91,8 +99,13 @@ public class PathFinding : MonoBehaviour
                 Debug.Log("Map mode OFF");
             }
         }
-
-
+        else
+        {
+            Debug.LogWarning("Can't enter map mode. Generate path grid first!");
+        }
+    }
+    private void Update()
+    {
         //rewrite ovo da ne racunas npr bounds svaki put 
         if (isInMapMode && Input.GetMouseButtonDown(0))
         {
@@ -109,24 +122,20 @@ public class PathFinding : MonoBehaviour
 
             if (SelectPoint(gridX, gridY))
             {
-                Debug.Log("Selecting tile at: " + new Vector2(gridX, gridY));
+                Debugger.ShowLog("Selecting tile at: " + new Vector2(gridX, gridY));
                 AStar(startNode, currentEndNode);
-            }           
+            }
             else
             {
-                Debug.Log("Out of bounds or cell not walkable. Error selecting a tile at grid position: " + new Vector2(gridX, gridY));
+                Debugger.ShowLog("Out of bounds or cell not walkable. Error selecting a tile at grid position: " + new Vector2(gridX, gridY));
             }
-        }
-        if (isInMapMode && Input.GetKeyDown(KeyCode.Backspace))
-        {
-            DeselectPoint();
         }
     }
 
     private bool SelectPoint(int gridX, int gridY)
     {
         int index = gridX + gridY * columns * colorDiversity;
-        if (index < 0 || index >= walkables.Length || !walkables[index].walkable)
+        if (gridX < 0 || gridY < 0 || gridX >= columns * colorDiversity || gridY >= rows * colorDiversity || !walkables[index].walkable)
         {
             return false;
         }
@@ -143,8 +152,11 @@ public class PathFinding : MonoBehaviour
            
         return true;
     }
-    private void DeselectPoint()
+    public void DeselectPoint()
     {
+        if (!isInMapMode)
+            return;
+
         if (pathHistory.Count < 3)
         {
             ResetCurrentPath();
@@ -239,7 +251,7 @@ public class PathFinding : MonoBehaviour
         }
 
         // T - path is walkable, F - path is an obstacle
-        for (int i = 0; i < rows * colorDiversity; i++)
+        /*for (int i = 0; i < rows * colorDiversity; i++)
         {
             System.Text.StringBuilder sb = new System.Text.StringBuilder();
             for (int j = 0; j < columns * colorDiversity; j++)
@@ -248,8 +260,8 @@ public class PathFinding : MonoBehaviour
                 sb.Append(curr.walkable ? "T " : "F ");
             }
             Debug.Log(sb.ToString());
-        }
-
+        }*/
+        Debug.Log("Path grid generated!");
 
         return walkables;
     }
@@ -321,7 +333,7 @@ public class PathFinding : MonoBehaviour
     {
         if (start == null || end == null)
         {
-            Debug.Log("Start or End nodes not set. Can't start pathfinding!");
+            Debug.LogWarning("Start or End nodes not set. Can't start pathfinding!");
             return;
         }
 
@@ -350,7 +362,7 @@ public class PathFinding : MonoBehaviour
             }
             if (current == end)
             {
-                Debug.Log("Path found");
+                Debugger.ShowLog("Path found");
                 ReconstructPath(start, current);
                 startNode = currentEndNode;
                 return;
