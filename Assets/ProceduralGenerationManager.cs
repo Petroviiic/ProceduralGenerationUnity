@@ -45,6 +45,12 @@ public class ProceduralGenerationManager : MonoBehaviour
 
     public void Setup()
     {
+        if (newColumns == 0 || newRows == 0)
+        {
+            Debug.LogError("Error! Rows and columns count must be greater than 0");
+            return;
+        }
+
         AdjustFOV();
 
         if (!LoadData()) { 
@@ -113,14 +119,19 @@ public class ProceduralGenerationManager : MonoBehaviour
     private bool LoadData()
     {
         bool isOk = true;
+        if (tileDataPalette == null)
+        {
+            Debug.LogError("TileDataPallete is missing");
+            return false;
+        }
         if (tileDataPalette.sprites.Count == 0)
         {
-            Debug.Log("TileDataPallete.Sprites is empty");
+            Debug.LogError("TileDataPallete.Sprites is empty");
             isOk = false;
         }
         if (tileDataPalette.spriteMarks.Count == 0)
         {
-            Debug.Log("TileDataPallete.SpriteMarks is empty");
+            Debug.LogError("TileDataPallete.SpriteMarks is empty");
             isOk = false;
         }
         if (!isOk) return false;
@@ -165,7 +176,7 @@ public class ProceduralGenerationManager : MonoBehaviour
         while (placed < columns * rows)
         {
 
-            Debug.Log(("Trying coordinates: ", coords));
+            Debugger.ShowLog(("Trying coordinates: " + coords));
             Dictionary<int, List<Sprite>> options = (coords.x >= 0 && coords.y >= 0) ? PlaceTile(coords) : null;
             
             if (options != null)
@@ -182,15 +193,15 @@ public class ProceduralGenerationManager : MonoBehaviour
             }
             else
             {
-                Debug.Log("Backtracking...");
+                Debugger.ShowLog("Backtracking...");
                 if (!TryBacktrack(history, out coords)) 
                     break;
                 placed--;
             }
-            
 
 
-            Debug.Log(("History stack count: ", history.Count));
+
+            Debugger.ShowLog(("History stack count: " + history.Count));
             if (!stepByStep)
             {
                 if (isTestEnv)
@@ -209,6 +220,7 @@ public class ProceduralGenerationManager : MonoBehaviour
             }
         }
         isRunning = false;
+        Debug.Log("Map generation process done");
     }
 
     private bool TryBacktrack(Stack<MapState> history, out Vector2Int newCoords)
@@ -305,11 +317,11 @@ public class ProceduralGenerationManager : MonoBehaviour
 
         if (tileMarks == null)
         {
-            Debug.Log("Tilemarks empty!");
+            Debugger.ShowLog("Tilemarks empty!");
             return null;
         }
 
-        Debug.Log(("Tile placed at: ", pos));
+        Debugger.ShowLog(("Tile placed at: " + pos));
 
         for (int i = 0; i < directions.Length; i++)     //check left, up, right, down, as sorted in tileMarks
         {
@@ -329,13 +341,20 @@ public class ProceduralGenerationManager : MonoBehaviour
 
 
 
-    public void InitPathFinding()
+    public bool InitPathFinding()
     {
         if (isRunning)
         {
             Debug.LogWarning("Cant initialize pathfinding. Generation process still in progress!");
-            return;
+            return false;
+        }
+        if (tileDataPalette == null || activeCells.Count == 0)
+        {
+            Debug.LogWarning("Cant initialize pathfinding. Map hasn't been generated yet or Tile Data Palette is missing!");
+            return false;
         }
         pathFindingManager.InitPathFinding(columns, rows, tileDataPalette.colorDiversity, activeCells[0], tileDataPalette.UseDiagonalMovementPathfinding);
+
+        return true;
     }
 }
