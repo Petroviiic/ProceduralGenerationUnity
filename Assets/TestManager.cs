@@ -16,17 +16,23 @@ enum GenerationType
 }
 public class TestManager : MonoBehaviour
 {
-    [SerializeField] private ProceduralGenerationManager generationManager;
-
+    [Header("Test Environment Settings")]
+    [Tooltip("How many map generations should be performed?")]
+    [SerializeField, Range(1, 1000)] private int testCasesCount = 20;
+ 
     private Coroutine multipleGenerationCoroutine;
     private Coroutine generationCoroutine;
     private bool stepByStepMode;
-    [SerializeField, Range(1, 1000)] private int testCasesCount = 20;
-
+    
+    [Header("External References")]
+    [SerializeField] private ProceduralGenerationManager generationManager;
+    [SerializeField] private PathFinding pathFindingManager;
     [SerializeField] private Image samplingDisplayUI;
+    [SerializeField] private GameObject HUD;
     private void Start()
     {
         samplingDisplayUI.gameObject.SetActive(false);
+        HUD.gameObject.SetActive(false);
     }
     private void Update()
     {
@@ -55,17 +61,35 @@ public class TestManager : MonoBehaviour
 
 
         //Pathfinding
-        if (Input.GetKeyDown(KeyCode.P))
+        if (Input.GetKeyDown(KeyCode.P))            //generates path grid
         {
-            generationManager.InitPathFinding();
+            Pathfinding();
+        }
+        if (Input.GetKeyDown(KeyCode.M))            //enters map mode; select points to generate path between them
+        {
+            PathFindingMapMode();
+        }
+        if (Input.GetKeyDown(KeyCode.Backspace))    //deletes the last point selection
+        {
+            DeselectLastPathPoint();
         }
 
+        
+        if (Input.GetKeyDown(KeyCode.L))           
+        {
+            ToggleDetailedLogs();
+        }
+        if (Input.GetKeyDown(KeyCode.H))            //hud consists of UI buttons for map generation and pathfinding
+        {
+            ToggleHUD();
+        }
 
-        if (Input.GetKeyDown(KeyCode.R))           //safety check, resets the scene
+        if (Input.GetKeyDown(KeyCode.R))           //safety option, resets the scene
         {
             SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
         }
     }
+    //Map generation
     public void InitGrid()
     {
         StartGeneration(GenerationType.InitGridOnly);
@@ -82,6 +106,41 @@ public class TestManager : MonoBehaviour
     {
         StartGeneration(GenerationType.StepByStepGeneration);
     }
+
+
+    //Pathfinding
+    public void Pathfinding()
+    {
+        if (generationManager.InitPathFinding())
+        {
+            //pathFindingCommands.SetActive(true);
+            //pathFindingCommands.SetActive(true);
+        }
+
+    }
+    public void PathFindingMapMode()
+    {
+        pathFindingManager.MapMode();
+    }
+    public void DeselectLastPathPoint()
+    {
+        pathFindingManager.DeselectPoint();
+    }
+
+    
+    
+    public void ToggleHUD()
+    {
+        HUD.SetActive(!HUD.activeSelf);
+    }
+
+    public void ToggleDetailedLogs()
+    {
+        Debugger.EnableLogs = !Debugger.EnableLogs;
+        Debug.Log("Logs " + (Debugger.EnableLogs ? "enabled!" : "disabled!"));
+    }
+
+
     public void ResetScene()
     {
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
@@ -89,6 +148,9 @@ public class TestManager : MonoBehaviour
 
     private void StartGeneration(GenerationType type)
     {
+        pathFindingManager.ResetPathData();
+
+
         if (generationManager.isRunning)
         {
             if (stepByStepMode && type == GenerationType.StepByStepGeneration)
@@ -149,6 +211,12 @@ public class TestManager : MonoBehaviour
 
     public void VisualizePixelsChecked()
     {
+        if (samplingDisplayUI.gameObject.activeSelf)
+        {
+            samplingDisplayUI.gameObject.SetActive(false);
+            return;
+        }
+
         if (generationManager.tileDataPalette == null)
         {
             Debug.LogWarning("Tile Palette ScriptableObject is missing in the Inspector. Please assign it.");
@@ -214,4 +282,27 @@ public class TestManager : MonoBehaviour
         samplingDisplayUI.sprite = dummy;
     }
 
+}
+
+public class Debugger
+{
+    public static bool EnableLogs = true;
+    public static void ShowLog(string msg)
+    {
+        if (!EnableLogs)
+            return;
+        Debug.Log(msg);
+    }
+    public static void ShowLogWarning(string msg)
+    {
+        if (!EnableLogs)
+            return;
+        Debug.LogWarning(msg);
+    }
+    public static void ShowLogError(string msg)
+    {
+        if (!EnableLogs)
+            return;
+        Debug.LogError(msg);
+    }
 }
