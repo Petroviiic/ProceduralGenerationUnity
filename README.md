@@ -14,6 +14,7 @@ This repo contains a map generation system with a Custom-Heap **A\* Pathfinding*
 
 - **Visual Debugging**: Real-time visualization of tile entropy, walkable areas, and sampling points using Gizmos.
 
+<br>
 
 ### 🛠 Setup & Workflow
 **1. Data Preparation**
@@ -33,7 +34,7 @@ This repo contains a map generation system with a Custom-Heap **A\* Pathfinding*
 - Assign your **generated TileData** to the **ProceduralGenerationManager**.
 - Set your desired **Grid Size** (Rows/Columns).
 
-
+<br>
 
 ### 🎮 Controls & Interaction
 **Map Generation**
@@ -78,6 +79,8 @@ This repo contains a map generation system with a Custom-Heap **A\* Pathfinding*
 | **L** | `Toggle Logs` | Enables/Disables detailed debugging logs. |
 | **H** | `Toggle HUD` | Shows/Hides UI buttons. |
 | **R** | `Reset` | Emergency scene reload. |
+
+<br>
 
 ### 🔍 Technical Insights
 **Walkable Grid Baking**
