@@ -25,7 +25,7 @@ A **Wave Function Collapse** (WFC) map generation system with a Custom-Heap **A*
 
 <br>
 
-![Sprite Data Generation](link_do_gifa_za_generisanje_sprite_data.gif)
+![Sprite Data Generation](Assets/Gifs/sprite-data-generation.gif)
 
 <br>
 
@@ -65,7 +65,7 @@ A **Wave Function Collapse** (WFC) map generation system with a Custom-Heap **A*
 
 <br>
 
-![Pathfinding Demonstration](link_do_gifa_za_pathfinding.gif)
+![Pathfinding Demonstration](Assets/Gifs/pathfinding-demonstration.gif)
 
 <br>
 
@@ -86,7 +86,7 @@ A **Wave Function Collapse** (WFC) map generation system with a Custom-Heap **A*
 
 <br>
 
-![Walkable Baking Gizmos](link_do_gifa_za_baking_gizmos.gif)
+![Walkable Baking Gizmos](Assets/Gifs/walkable-baking-gizmos.gif)
 
 <br>
 
@@ -103,7 +103,7 @@ A **Wave Function Collapse** (WFC) map generation system with a Custom-Heap **A*
 
 <br>
 
-![Entropy Visualization Gizmos](link_do_gifa_za_entropy_gizmos.gif)
+![Entropy Visualization Gizmos](Assets/Gifs/entropy-visualization-gizmos.gif)
 
 <br>
 
