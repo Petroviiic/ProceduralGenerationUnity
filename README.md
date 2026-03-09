@@ -24,16 +24,16 @@ This repo contains a map generation system with a Custom-Heap **A\* Pathfinding*
 - **Set Color Diversity**: Defines how many points along the edge are sampled for matching. *Use a low value for simple tiles and higher for complex transitions*.
 - Click **Generate Tile Data** to process adjacency rules.
 
-<br>
-
-![Sprite Data Generation](Assets/Gifs/sprite-data-generation.gif)
-
-<br>
 
 **2. Scene Configuration**
 - Assign your **generated TileData** to the **ProceduralGenerationManager**.
 - Set your desired **Grid Size** (Rows/Columns).
 
+<br>
+
+![Sprite Data Generation](Assets/Gifs/sprite-data-generation.gif)
+
+<br>
 <br>
 
 ### 🎮 Controls & Interaction
@@ -80,6 +80,7 @@ This repo contains a map generation system with a Custom-Heap **A\* Pathfinding*
 | **H** | `Toggle HUD` | Shows/Hides UI buttons. |
 | **R** | `Reset` | Emergency scene reload. |
 
+<br>
 <br>
 
 ### 🔍 Technical Insights
