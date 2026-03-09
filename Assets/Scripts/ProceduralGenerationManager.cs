@@ -6,16 +6,25 @@ using UnityEngine;
 
 public class ProceduralGenerationManager : MonoBehaviour
 {
-    [SerializeField] private Transform gridParent;
-    [SerializeField] private GameObject cellPrefab;
 
     // Using rows and newrows to prevent errors if these are edited mid-generation
     private int rows;
     private int columns;
-    [SerializeField, Range(1, 200)] private int newRows = 3;
-    [SerializeField, Range(1, 200)] private int newColumns = 4;
 
+    [Header("Generation Settings")]
+    [Tooltip("The number of rows for the next grid generation. Changes won't affect the current grid until it is re-generated.")]
+    [SerializeField, Range(1, 200)] private int newRows = 3;
+    [Tooltip("The number of columns for the next grid generation. Changes won't affect the current grid until it is re-generated.")]
+    [SerializeField, Range(1, 200)] private int newColumns = 4;
+    [Tooltip("The world-space offset of the grid origin. Use this to center or position your map in the scene.")]
     [SerializeField] private Vector2 gridOffset;
+    [Tooltip("The delay (in seconds) between each step of the generation process. Lower values result in faster generation.")]
+    [SerializeField] private float visualizationSpeed = 0.1f;
+    [Space(10)]
+    [Tooltip("The ScriptableObject containing the pre-generated tile data")]
+    public TileData tileDataPalette;
+    public Dictionary<Sprite, int[]> marksData = new Dictionary<Sprite, int[]>();
+
     private Vector2 cellSize = new Vector2(1, 1);
 
     private List<CellTile> cellPool = new List<CellTile>();
@@ -25,10 +34,7 @@ public class ProceduralGenerationManager : MonoBehaviour
 
     [NonSerialized, HideInInspector] public List<Sprite> sprites = new List<Sprite>();
     
-    public TileData tileDataPalette;
-    public Dictionary<Sprite, int[]> marksData = new Dictionary<Sprite, int[]>();
 
-    [SerializeField] private float visualizationSpeed = 0.1f;
 
     private Vector2Int[] directions = new Vector2Int[]
     {
@@ -40,7 +46,9 @@ public class ProceduralGenerationManager : MonoBehaviour
     [HideInInspector] public bool goNext = false;        //used for stepbystep iteration
     [HideInInspector] public bool isRunning = false;     //is generation currently in progress
 
-
+    [Header("External References")]
+    [SerializeField] private Transform gridParent;
+    [SerializeField] private GameObject cellPrefab;
     [SerializeField] private PathFinding pathFindingManager;
 
     public void Setup()
@@ -105,7 +113,7 @@ public class ProceduralGenerationManager : MonoBehaviour
     private void AdjustFOV()
     {
         Vector3 gridPosition = Camera.main.ScreenToWorldPoint(new Vector3(Screen.width / 2, Screen.height / 2, 10));
-        gridPosition += new Vector3(-1 * (newColumns - 1) / 2, 1 * (newRows - 1) / 2);
+        gridPosition += new Vector3(-1 * ((float)newColumns - 1) / 2, 1 * ((float)newRows - 1) / 2);
         gridParent.localPosition = gridPosition;
 
         float aspectRatio = (float)Screen.width / (float)Screen.height;
