@@ -1,7 +1,7 @@
 
 # 🧩 **Unity Procedural Map Generation & Pathfinding System**
 
-A **Wave Function Collapse** (WFC) map generation system with a Custom-Heap **A* Pathfinding** implementation. Tool that allows rapid prototyping of procedurally generated tile-based maps with built-in backtracking and navigation support.
+A **Wave Function Collapse** (WFC) map generation system with a Custom-Heap **A\* Pathfinding** implementation. Tool that allows rapid prototyping of procedurally generated tile-based maps with built-in backtracking and navigation support.
 
 ### 🚀 Key Features
 - **Wave Function Collapse (WFC)**: Generates rule-based maps from simple sprite sets.
