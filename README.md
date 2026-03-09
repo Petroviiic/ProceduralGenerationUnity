@@ -98,8 +98,8 @@ A **Wave Function Collapse** (WFC) map generation system with a Custom-Heap **A\
 
 **Debugging & Gizmos**
 <br> If **Gizmos** are enabled during generation:
-- **Debugger**: Toggle detailed console logs with **[L]** to monitor backtracking events and generation logic.
 - **Entropy View**: Left-click a tile during generation to see remaining possibilities for neighbors.
+**Debugger**: Toggle detailed console logs with **[L]** to monitor backtracking events and generation logic.
 
 <br>
 
