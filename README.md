@@ -47,7 +47,7 @@ A **Wave Function Collapse** (WFC) map generation system with a Custom-Heap **A*
 
 <br>
 
-![Map Generation Process](".Assets/gifs/map-generation-process.gif")
+![Map Generation Process]("Assets/gifs/map-generation-process.gif")
 
 <br>
 
